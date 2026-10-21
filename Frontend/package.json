@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "description": "Ahsan Hub public directory site.",
+  "engines": {
+    "node": "22"
+  },
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",
