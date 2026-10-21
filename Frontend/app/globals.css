@@ -1,0 +1,132 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+  Brand: one green, ink, paper. Everything else is a neutral or a status colour.
+  No gradients anywhere.
+*/
+:root {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --band: #f4f4f5;
+  --line: #e4e4e7;
+  --line-strong: #d4d4d8;
+  --ink: #141414;
+  --ink-soft: #3f3f46;
+  --muted: #667085;
+  --brand: #0b6e4f;
+  --brand-hover: #084d38;
+  --brand-text: #0b6e4f;
+  --brand-soft: #e7f3ee;
+  --brand-line: #cfe5db;
+  --star: #b54708;
+  --danger: #b42318;
+  --danger-soft: #fdecea;
+  --warn-soft: #fff4e5;
+  --warn-text: #93370d;
+  --glass: rgb(255 255 255 / 0.78);
+}
+
+.dark {
+  --bg: #0c0c0c;
+  --surface: #171717;
+  --band: #121212;
+  --line: #2a2a2a;
+  --line-strong: #3a3a3a;
+  --ink: #ededed;
+  --ink-soft: #c8c8cc;
+  --muted: #a1a1aa;
+  --brand: #0b6e4f;
+  --brand-hover: #0d7f5c;
+  --brand-text: #1f9a72;
+  --brand-soft: #0f241d;
+  --brand-line: #1c4a3a;
+  --star: #f0a43a;
+  --danger: #f97066;
+  --danger-soft: #2a1414;
+  --warn-soft: #2a1e0c;
+  --warn-text: #fdb022;
+  --glass: rgb(12 12 12 / 0.74);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-band: var(--band);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-muted: var(--muted);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-text: var(--brand-text);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-line: var(--brand-line);
+  --color-star: var(--star);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warn-soft: var(--warn-soft);
+  --color-warn-text: var(--warn-text);
+  --color-glass: var(--glass);
+  --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex), ui-monospace, monospace;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: var(--brand-soft);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 2px;
+}
+
+/* Listing descriptions, both on the product page and inside the editor. */
+.prose-listing {
+  color: var(--ink-soft);
+  font-size: 1.0625rem;
+  line-height: 1.75;
+}
+.prose-listing > :first-child { margin-top: 0; }
+.prose-listing h2 { margin: 2rem 0 0.6rem; color: var(--ink); font-size: 1.35rem; font-weight: 600; letter-spacing: -0.015em; line-height: 1.3; }
+.prose-listing h3 { margin: 1.6rem 0 0.5rem; color: var(--ink); font-size: 1.125rem; font-weight: 600; line-height: 1.35; }
+.prose-listing h4 { margin: 1.4rem 0 0.4rem; color: var(--ink); font-weight: 600; }
+.prose-listing p { margin: 0.85rem 0; }
+.prose-listing ul, .prose-listing ol { margin: 0.85rem 0; padding-left: 1.35rem; }
+.prose-listing ul { list-style: disc; }
+.prose-listing ol { list-style: decimal; }
+.prose-listing li { margin: 0.35rem 0; padding-left: 0.2rem; }
+.prose-listing li::marker { color: var(--muted); }
+.prose-listing strong { color: var(--ink); font-weight: 600; }
+.prose-listing a { color: var(--brand-text); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.prose-listing blockquote { margin: 1.2rem 0; border-left: 2px solid var(--brand); padding-left: 1rem; color: var(--ink); }
+.prose-listing code { border-radius: 6px; background: var(--band); padding: 0.1rem 0.35rem; font-family: var(--font-mono); font-size: 0.9em; }
+.prose-listing hr { margin: 2rem 0; border-color: var(--line); }
+
+.tiptap { outline: none; min-height: 260px; }
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.scrollbar-none { scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }

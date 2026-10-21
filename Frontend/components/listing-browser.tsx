@@ -1,0 +1,198 @@
+import Link from "next/link";
+import { Search, X } from "lucide-react";
+import type { Category, ListingCard, Page } from "@/lib/types";
+import { PRICING_LABEL, cn } from "@/lib/format";
+import { ProductCard } from "@/components/product-card";
+
+export type BrowseParams = { q?: string; category?: string; pricing?: string; sort?: string; page?: string };
+
+const SORTS = [
+  { value: "new", label: "Newest" },
+  { value: "top", label: "Most upvoted" },
+  { value: "featured", label: "Featured" },
+];
+
+/** Builds a link that changes one filter and keeps the others. Changing a filter resets the page. */
+function hrefFor(base: string, params: BrowseParams, change: Partial<BrowseParams>) {
+  const next = { ...params, page: undefined, ...change };
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(next)) if (value) search.set(key, value);
+  const query = search.toString();
+  return query ? `${base}?${query}` : base;
+}
+
+export function ListingBrowser({
+  base,
+  params,
+  results,
+  categories,
+  sponsored,
+  lockCategory = false,
+}: {
+  base: string;
+  params: BrowseParams;
+  results: Page<ListingCard>;
+  categories: Category[];
+  sponsored: ListingCard[];
+  lockCategory?: boolean;
+}) {
+  const sort = params.sort ?? "new";
+  const filtered = Boolean(params.q || params.pricing || (!lockCategory && params.category));
+  const cells: { listing: ListingCard; sponsored: boolean }[] = [];
+  results.items.forEach((listing, index) => {
+    cells.push({ listing, sponsored: false });
+    const ad = sponsored[Math.floor(index / 8) % Math.max(1, sponsored.length)];
+    if ((index + 1) % 8 === 0 && ad && index < results.items.length - 1) cells.push({ listing: ad, sponsored: true });
+  });
+
+  return (
+    <div className="grid gap-10 lg:grid-cols-[240px_minmax(0,1fr)]">
+      <aside className="lg:sticky lg:top-24 lg:self-start">
+        <form action={base} id="search" className="flex items-center gap-2 rounded-xl border border-line bg-surface px-3 focus-within:border-brand">
+          <Search size={16} className="shrink-0 text-muted" aria-hidden="true" />
+          <label htmlFor="browse-q" className="sr-only">
+            Search
+          </label>
+          <input id="browse-q" name="q" defaultValue={params.q} placeholder="Search products" className="h-10 min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-muted" />
+          {params.category && !lockCategory && <input type="hidden" name="category" value={params.category} />}
+          {params.pricing && <input type="hidden" name="pricing" value={params.pricing} />}
+          {params.sort && <input type="hidden" name="sort" value={params.sort} />}
+        </form>
+
+        <FilterGroup title="Pricing">
+          <FilterLink href={hrefFor(base, params, { pricing: undefined })} active={!params.pricing}>
+            Any price
+          </FilterLink>
+          {Object.entries(PRICING_LABEL).map(([value, label]) => (
+            <FilterLink key={value} href={hrefFor(base, params, { pricing: value })} active={params.pricing === value}>
+              {label}
+            </FilterLink>
+          ))}
+        </FilterGroup>
+
+        {!lockCategory && (
+          <FilterGroup title="Category">
+            <FilterLink href={hrefFor(base, params, { category: undefined })} active={!params.category}>
+              All categories
+            </FilterLink>
+            {categories.map((category) => (
+              <FilterLink key={category.slug} href={hrefFor(base, params, { category: category.slug })} active={params.category === category.slug} count={category.count}>
+                {category.name}
+              </FilterLink>
+            ))}
+          </FilterGroup>
+        )}
+      </aside>
+
+      <div className="min-w-0">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-[14px] text-muted">
+            <span className="font-semibold tabular-nums text-ink">{results.total}</span> {results.total === 1 ? "product" : "products"}
+            {params.q && (
+              <>
+                {" "}
+                for <span className="font-semibold text-ink">“{params.q}”</span>
+              </>
+            )}
+            {filtered && (
+              <Link href={base} className="ml-3 inline-flex items-center gap-1 font-medium text-brand-text">
+                <X size={13} /> Clear filters
+              </Link>
+            )}
+          </p>
+          <div className="flex rounded-xl border border-line bg-surface p-1" role="tablist" aria-label="Sort">
+            {SORTS.map((item) => (
+              <Link
+                key={item.value}
+                href={hrefFor(base, params, { sort: item.value === "new" ? undefined : item.value })}
+                role="tab"
+                aria-selected={sort === item.value}
+                className={cn("rounded-lg px-3 py-1.5 text-[13px] font-semibold transition", sort === item.value ? "bg-ink text-bg" : "text-muted hover:text-ink")}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {results.items.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-line-strong px-6 py-16 text-center">
+            <p className="text-[16px] font-semibold text-ink">No products match yet</p>
+            <p className="mt-1 text-[14px] text-muted">Try another search, or be the first to list one here.</p>
+            <Link href="/submit" className="mt-5 inline-flex h-10 items-center rounded-lg bg-brand px-4 text-[14px] font-semibold text-white hover:bg-brand-hover">
+              Submit a product
+            </Link>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {cells.map((cell, index) => (
+              <ProductCard key={`${cell.listing.id}-${index}`} listing={cell.listing} showSponsored={cell.sponsored} />
+            ))}
+          </div>
+        )}
+
+        {results.pages > 1 && <Pagination base={base} params={params} page={results.page} pages={results.pages} />}
+      </div>
+    </div>
+  );
+}
+
+function FilterGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="mt-7">
+      <p className="mb-2 px-2 text-[12px] font-semibold uppercase tracking-[0.1em] text-muted">{title}</p>
+      <ul className="scrollbar-none -mx-5 flex gap-1 overflow-x-auto px-5 lg:mx-0 lg:block lg:space-y-0.5 lg:overflow-visible lg:px-0">{children}</ul>
+    </div>
+  );
+}
+
+function FilterLink({ href, active, count, children }: { href: string; active: boolean; count?: number; children: React.ReactNode }) {
+  return (
+    <li className="shrink-0">
+      <Link
+        href={href}
+        aria-current={active ? "true" : undefined}
+        className={cn(
+          "flex items-center justify-between gap-3 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[14px] transition",
+          active ? "bg-brand-soft font-semibold text-brand-text" : "text-ink-soft hover:bg-band hover:text-ink",
+          "max-lg:border max-lg:border-line",
+        )}
+      >
+        {children}
+        {count !== undefined && <span className="text-[12px] tabular-nums text-muted max-lg:hidden">{count}</span>}
+      </Link>
+    </li>
+  );
+}
+
+function Pagination({ base, params, page, pages }: { base: string; params: BrowseParams; page: number; pages: number }) {
+  const link = (target: number) => {
+    const search = new URLSearchParams();
+    for (const [key, value] of Object.entries({ ...params, page: target > 1 ? String(target) : undefined })) if (value) search.set(key, value);
+    const query = search.toString();
+    return query ? `${base}?${query}` : base;
+  };
+  const numbers = Array.from({ length: pages }, (_, index) => index + 1).filter((n) => n === 1 || n === pages || Math.abs(n - page) <= 1);
+  return (
+    <nav className="mt-10 flex items-center justify-center gap-1" aria-label="Pagination">
+      {page > 1 && (
+        <Link href={link(page - 1)} rel="prev" className="h-9 rounded-lg border border-line px-3 text-[14px] font-medium leading-9 hover:border-line-strong">
+          Previous
+        </Link>
+      )}
+      {numbers.map((n, index) => (
+        <span key={n} className="flex items-center gap-1">
+          {index > 0 && numbers[index - 1] !== n - 1 && <span className="px-1 text-muted">…</span>}
+          <Link href={link(n)} aria-current={n === page ? "page" : undefined} className={cn("grid h-9 min-w-9 place-items-center rounded-lg px-2 text-[14px] font-medium tabular-nums", n === page ? "bg-ink text-bg" : "hover:bg-band")}>
+            {n}
+          </Link>
+        </span>
+      ))}
+      {page < pages && (
+        <Link href={link(page + 1)} rel="next" className="h-9 rounded-lg border border-line px-3 text-[14px] font-medium leading-9 hover:border-line-strong">
+          Next
+        </Link>
+      )}
+    </nav>
+  );
+}

@@ -1,0 +1,44 @@
+{
+  "name": "ahsanhub-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ahsan Hub API, admin panel and PostgreSQL schema.",
+  "scripts": {
+    "dev": "next dev -p 3020",
+    "build": "prisma generate && next build",
+    "start": "next start -p 3020",
+    "postinstall": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "tsx --env-file-if-exists=.env prisma/seed.ts",
+    "db:demo": "tsx --env-file-if-exists=.env prisma/seed.ts --demo",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "@tiptap/pm": "^3.32.0",
+    "@tiptap/react": "^3.32.0",
+    "@tiptap/starter-kit": "^3.32.0",
+    "bcryptjs": "^3.0.3",
+    "image-size": "^2.0.4",
+    "jose": "^6.2.13",
+    "lucide-react": "^1.52.0",
+    "next": "^16.2.1",
+    "nodemailer": "^10.1.7",
+    "prisma": "^6.19.3",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "sanitize-html": "^2.18.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^22",
+    "@types/nodemailer": "^8.0.2",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/sanitize-html": "^2.16.2",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.15",
+    "typescript": "^5"
+  }
+}

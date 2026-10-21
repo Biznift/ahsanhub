@@ -1,0 +1,295 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin
+  owner
+}
+
+enum AccountStatus {
+  active
+  disabled
+}
+
+enum ListingStatus {
+  pending
+  published
+  rejected
+}
+
+enum Pricing {
+  free
+  freemium
+  paid
+  open_source
+}
+
+enum ReviewStatus {
+  pending
+  approved
+  hidden
+}
+
+enum AdKind {
+  image
+  gif
+  video
+}
+
+model User {
+  id            String        @id @default(cuid())
+  name          String
+  email         String        @unique
+  passwordHash  String
+  role          Role          @default(owner)
+  status        AccountStatus @default(active)
+  plan          String        @default("")
+  emailVerified Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  listings      Listing[]
+  mails         Mail[]
+  tokens        LoginToken[]
+}
+
+model Category {
+  id          String            @id @default(cuid())
+  name        String            @unique
+  slug        String            @unique
+  description String            @default("")
+  hidden      Boolean           @default(false)
+  sortOrder   Int               @default(0)
+  createdAt   DateTime          @default(now())
+  listings    ListingCategory[]
+}
+
+model Listing {
+  id           String            @id @default(cuid())
+  slug         String            @unique
+  name         String
+  overview     String
+  description  String
+  website      String
+  logo         String?
+  banner       String?
+  pricing      Pricing           @default(free)
+  country      String            @default("")
+  platforms    String[]          @default([])
+  halalNote    String            @default("")
+  socials      Json              @default("{}")
+  contactEmail String
+  status       ListingStatus     @default(pending)
+  featured     Boolean           @default(false)
+  sponsored    Boolean           @default(false)
+  halalVerified Boolean          @default(false)
+  voteCount    Int               @default(0)
+  ownerId      String?
+  owner        User?             @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  categories   ListingCategory[]
+  founders     Founder[]
+  votes        Vote[]
+  reviews      Review[]
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  publishedAt  DateTime?
+
+  @@index([status, createdAt])
+  @@index([status, voteCount])
+}
+
+model ListingCategory {
+  listingId  String
+  categoryId String
+  listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([listingId, categoryId])
+}
+
+model Founder {
+  id        String  @id @default(cuid())
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  name      String
+  role      String  @default("")
+  bio       String  @default("")
+  photo     String?
+  socials   Json    @default("{}")
+  sortOrder Int     @default(0)
+}
+
+model Vote {
+  listingId String
+  voterId   String
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([listingId, voterId])
+}
+
+model Review {
+  id        String       @id @default(cuid())
+  listingId String
+  listing   Listing      @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  name      String
+  rating    Int
+  body      String
+  status    ReviewStatus @default(pending)
+  createdAt DateTime     @default(now())
+
+  @@index([listingId, status])
+}
+
+model Ad {
+  id        String   @id @default(cuid())
+  placement String
+  title     String
+  kind      AdKind
+  file      String
+  url       String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([placement, active])
+}
+
+model Media {
+  id        String   @id @default(cuid())
+  path      String   @unique
+  name      String
+  mime      String
+  size      Int
+  width     Int?
+  height    Int?
+  createdAt DateTime @default(now())
+}
+
+model Setting {
+  key   String @id
+  value Json
+}
+
+enum PostKind {
+  blog
+  page
+}
+
+enum PublishStatus {
+  draft
+  published
+}
+
+enum FeedbackKind {
+  BUG
+  FEATURE
+  FEEDBACK
+  OTHER
+}
+
+enum FeedbackStatus {
+  OPEN
+  REPLIED
+  CLOSED
+}
+
+enum ActivityType {
+  signup
+  listing
+}
+
+model Post {
+  id          String        @id @default(cuid())
+  kind        PostKind
+  title       String
+  slug        String        @unique
+  excerpt     String        @default("")
+  body        String        @default("")
+  tags        String        @default("")
+  cover       String        @default("")
+  status      PublishStatus @default(draft)
+  publishedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([kind, status])
+}
+
+model FeedbackThread {
+  id        String         @id @default(cuid())
+  name      String
+  email     String
+  kind      FeedbackKind
+  title     String
+  status    FeedbackStatus @default(OPEN)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  messages  FeedbackMessage[]
+
+  @@index([status, updatedAt])
+}
+
+model FeedbackMessage {
+  id        String         @id @default(cuid())
+  threadId  String
+  thread    FeedbackThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  author    String
+  role      String
+  body      String
+  createdAt DateTime       @default(now())
+}
+
+model Campaign {
+  id           String    @id @default(cuid())
+  name         String
+  subject      String
+  body         String
+  audience     Json
+  status       String    @default("draft")
+  recipientIds String[]  @default([])
+  sentAt       DateTime?
+  createdAt    DateTime  @default(now())
+}
+
+model Mail {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaignId String?
+  subject    String
+  body       String
+  sentAt     DateTime  @default(now())
+
+  @@index([userId, sentAt])
+}
+
+model SocialEvent {
+  id         String       @id @default(cuid())
+  type       ActivityType
+  message    String
+  occurredAt DateTime     @default(now())
+  enabled    Boolean      @default(true)
+
+  @@index([occurredAt])
+}
+
+model BackupFile {
+  id        String   @id @default(cuid())
+  name      String
+  size      Int
+  automatic Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model LoginToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}

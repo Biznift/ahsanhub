@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #0b6e4f;
+  --ink-2: #084d38;
+  --lime: #ffffff;
+  --paper: #f5f6fa;
+  --card: #ffffff;
+  --line: #e6e8ef;
+  --muted: #667085;
+  --text: #1d2939;
+  --danger: #f04438;
+  --ok: #12b76a;
+  --warn: #b54708;
+  --info: #2e90fa;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 17px;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--text);
+  font-family: var(--font-instrument), "Segoe UI", sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+::selection {
+  background: #e7f3ee;
+}
+
+.mono {
+  font-family: var(--font-plex), ui-monospace, monospace;
+}
+
+main section > h2,
+main article > h2 {
+  margin-bottom: 0.35rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid #eef0f4;
+  font-size: 1.2rem;
+  font-weight: 650;
+  color: #1d2939;
+}
+
+.app-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.app-scroll::-webkit-scrollbar-thumb {
+  background: #d0d5dd;
+  border-radius: 99px;
+}
+
+.rich-body h2 { margin: 1.1em 0 0.4em; font-size: 1.3rem; font-weight: 650; }
+.rich-body h3 { margin: 1em 0 0.35em; font-size: 1.1rem; font-weight: 650; }
+.rich-body p { margin: 0.5em 0; line-height: 1.65; }
+.rich-body ul { margin: 0.5em 0; padding-left: 1.3em; list-style: disc; }
+.rich-body ol { margin: 0.5em 0; padding-left: 1.3em; list-style: decimal; }
+.rich-body blockquote { margin: 0.75em 0; border-left: 3px solid #cfe5db; padding-left: 0.9em; color: #475467; }
+.rich-body a { color: #0b6e4f; text-decoration: underline; }
