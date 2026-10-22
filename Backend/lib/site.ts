@@ -2,6 +2,20 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { httpSocials } from "@/lib/directory";
 
+const assetUrl = z
+  .string()
+  .trim()
+  .max(2000)
+  .refine((value) => {
+    if (!value || value.startsWith("/files/")) return true;
+    try {
+      const url = new URL(value);
+      return url.protocol === "http:" || url.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }, "Enter an image URL or upload a file.");
+
 export const siteSchema = z.object({
   name: z.string().trim().min(2).max(60),
   tagline: z.string().trim().max(120),
@@ -15,6 +29,11 @@ export const siteSchema = z.object({
     .refine((value) => value === "" || z.string().email().safeParse(value).success, "Enter a valid contact email"),
   socials: z.record(z.string(), z.string().max(300)),
   announcement: z.string().trim().max(140),
+  logo: assetUrl.optional().default(""),
+  favicon: assetUrl.optional().default(""),
+  appleTouchIcon: assetUrl.optional().default(""),
+  ogImage: assetUrl.optional().default(""),
+  showBismillah: z.boolean().optional().default(false),
 });
 
 export type SiteSettings = z.infer<typeof siteSchema>;
@@ -29,6 +48,11 @@ export const DEFAULT_SITE: SiteSettings = {
   contactEmail: "hello@ahsanhub.com",
   socials: {},
   announcement: "",
+  logo: "",
+  favicon: "",
+  appleTouchIcon: "",
+  ogImage: "",
+  showBismillah: false,
 };
 
 export async function readSite(): Promise<SiteSettings> {

@@ -270,8 +270,15 @@ export const MODULES: KitModule[] = [
     href: "/admin/branding",
     label: "Branding & SEO",
     group: "Content",
-    summary: "Site name, tagline, announcement bar, footer social links, and how the home page appears in Google.",
-    functions: ["Edit name and tagline", "Set the announcement bar", "Write the SEO title and description", "Add keywords", "Save social links"],
+    summary: "Site name, logo, favicon, share image, tagline, announcement bar, footer social links, and how the home page appears in Google.",
+    functions: [
+      "Edit name and tagline",
+      "Upload logo, favicon, Apple icon, and social share image",
+      "Set the announcement bar",
+      "Write the SEO title and description",
+      "Add keywords",
+      "Save social links",
+    ],
     endpoints: [
       { method: "GET", path: "/api/admin/site", summary: "Site config, including branding and SEO" },
       { method: "PUT", path: "/api/admin/site", summary: "Save branding and SEO" },

@@ -8,7 +8,7 @@ import { moduleBySlug } from "@/lib/catalog";
 import { ModuleFrame } from "@/components/frame";
 import { useStore } from "@/components/store";
 import { Button, TextInput, cn } from "@/components/ui";
-import { Empty, StatusPill, Switch, Thumb, api, formatDate, useApi } from "@/components/admin-kit";
+import { ConfirmDialog, Empty, StatusPill, Switch, Thumb, api, formatDate, useApi } from "@/components/admin-kit";
 
 type AdminListingRow = {
   id: string;
@@ -51,6 +51,8 @@ function ListingsScreen() {
   const status = params.get("status") ?? "";
   const [query, setQuery] = useState("");
   const [submitted, setSubmitted] = useState("");
+  const [pendingDelete, setPendingDelete] = useState<AdminListingRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const { notify } = useStore();
   const search = new URLSearchParams();
   if (status) search.set("status", status);
@@ -70,6 +72,21 @@ function ListingsScreen() {
       if (change.status) notify(`${row.name} is ${change.status}`);
     } catch (problem) {
       notify((problem as Error).message);
+    }
+  }
+
+  async function remove() {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    try {
+      await api(`/api/admin/listings/${pendingDelete.id}`, { method: "DELETE" });
+      setData((current) => current && { items: current.items.filter((item) => item.id !== pendingDelete.id) });
+      notify(`${pendingDelete.name} permanently deleted`);
+      setPendingDelete(null);
+    } catch (problem) {
+      notify((problem as Error).message);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -177,6 +194,9 @@ function ListingsScreen() {
                         <Link href={`/admin/listings/${row.id}`} className="rounded-md px-2 py-1.5 text-sm font-medium text-[#0b6e4f] hover:bg-[#e7f3ee]">
                           Edit
                         </Link>
+                        <Button type="button" tone="danger" className="px-3 py-1.5 text-sm" onClick={() => setPendingDelete(row)}>
+                          Delete
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -185,6 +205,17 @@ function ListingsScreen() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {pendingDelete && (
+        <ConfirmDialog
+          title="Permanently delete this listing?"
+          body={`${pendingDelete.name} will be removed from the site, along with its reviews, votes, and files. This cannot be undone.`}
+          confirmLabel="Permanently delete"
+          busy={deleting}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={remove}
+        />
       )}
     </ModuleFrame>
   );

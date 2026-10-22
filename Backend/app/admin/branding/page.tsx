@@ -1,10 +1,11 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { Upload } from "lucide-react";
 import { moduleBySlug } from "@/lib/catalog";
 import { ModuleFrame } from "@/components/frame";
 import { useStore } from "@/components/store";
-import { Button, Field, TextInput, controlClass } from "@/components/ui";
+import { Button, Field, TextInput, cn, controlClass } from "@/components/ui";
 import { Card, api, useApi } from "@/components/admin-kit";
 import { SOCIALS } from "@/components/listing-editor";
 
@@ -17,7 +18,14 @@ type Site = {
   contactEmail: string;
   socials: Record<string, string>;
   announcement: string;
+  logo: string;
+  favicon: string;
+  appleTouchIcon: string;
+  ogImage: string;
+  showBismillah: boolean;
 };
+
+type AssetKey = "logo" | "favicon" | "appleTouchIcon" | "ogImage";
 
 export default function BrandingPage() {
   const module = moduleBySlug("branding");
@@ -26,9 +34,19 @@ export default function BrandingPage() {
   const [form, setForm] = useState<Site | null>(null);
   const [keyword, setKeyword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState<AssetKey | null>(null);
 
   useEffect(() => {
-    if (data) setForm(data);
+    if (data) {
+      setForm({
+        ...data,
+        logo: data.logo ?? "",
+        favicon: data.favicon ?? "",
+        appleTouchIcon: data.appleTouchIcon ?? "",
+        ogImage: data.ogImage ?? "",
+        showBismillah: data.showBismillah ?? false,
+      });
+    }
   }, [data]);
 
   if (!form) return <ModuleFrame module={module}><p className="text-sm text-[#667085]">Loading…</p></ModuleFrame>;
@@ -50,6 +68,21 @@ export default function BrandingPage() {
     if (!next || form!.keywords.includes(next)) return;
     set({ keywords: [...form!.keywords, next] });
     setKeyword("");
+  }
+
+  async function uploadAsset(key: AssetKey, file: File) {
+    const body = new FormData();
+    body.set("file", file);
+    setUploading(key);
+    try {
+      const saved = await api<{ path: string }>("/api/admin/media", { method: "POST", body });
+      set({ [key]: saved.path });
+      setError(null);
+    } catch (problem) {
+      setError((problem as Error).message);
+    } finally {
+      setUploading(null);
+    }
   }
 
   return (
@@ -76,7 +109,58 @@ export default function BrandingPage() {
           </div>
         </Card>
 
-        <Card title="Search engines" description="How the home page appears in Google. Product and category pages build their own titles from the listing.">
+        <Card title="Logo & icons" description="Leave empty to keep the built-in arch mark.">
+          <div className="grid gap-6 md:grid-cols-2">
+            <AssetField
+              label="Logo"
+              hint="Square works best (shown at 40×40). PNG/SVG with transparent background."
+              accept="image/png,image/jpeg,image/webp,image/svg+xml,.svg"
+              value={form.logo}
+              busy={uploading === "logo"}
+              onChange={(logo) => set({ logo })}
+              onUpload={(file) => uploadAsset("logo", file)}
+            />
+            <AssetField
+              label="Favicon"
+              hint="The browser tab. Square PNG, 64×64 or larger. ICO and SVG also work."
+              accept="image/png,image/jpeg,image/webp,image/svg+xml,image/x-icon,.ico,.svg"
+              value={form.favicon}
+              busy={uploading === "favicon"}
+              onChange={(favicon) => set({ favicon })}
+              onUpload={(file) => uploadAsset("favicon", file)}
+            />
+            <AssetField
+              label="Apple touch icon"
+              hint="Home-screen icon on iPhone. 180×180 PNG. Uses the favicon if empty."
+              accept="image/png,image/jpeg,image/webp"
+              value={form.appleTouchIcon}
+              busy={uploading === "appleTouchIcon"}
+              onChange={(appleTouchIcon) => set({ appleTouchIcon })}
+              onUpload={(file) => uploadAsset("appleTouchIcon", file)}
+            />
+            <AssetField
+              label="Social share image"
+              hint="Shown when the site is shared on Facebook, LinkedIn, WhatsApp. 1200×630."
+              accept="image/png,image/jpeg,image/webp"
+              value={form.ogImage}
+              busy={uploading === "ogImage"}
+              shape="wide"
+              onChange={(ogImage) => set({ ogImage })}
+              onUpload={(file) => uploadAsset("ogImage", file)}
+            />
+          </div>
+          <label className="mt-6 flex items-center gap-2 text-sm text-[#344054]">
+            <input
+              type="checkbox"
+              checked={form.showBismillah}
+              onChange={(event) => set({ showBismillah: event.target.checked })}
+              className="h-4 w-4 rounded border-[#d0d5dd] accent-[#0b6e4f]"
+            />
+            Show Bismillah above the header
+          </label>
+        </Card>
+
+        <Card title="Search engines" description="How the home page appears in Google. Product and category pages build their own titles from the listing. The social share image above is used for Open Graph and Twitter cards.">
           <div className="grid gap-3">
             <Field label={`Title (${form.seoTitle.length}/60)`}>
               <TextInput value={form.seoTitle} maxLength={70} onChange={(event) => set({ seoTitle: event.target.value })} />
@@ -126,5 +210,80 @@ export default function BrandingPage() {
         <Button type="submit">Save branding</Button>
       </form>
     </ModuleFrame>
+  );
+}
+
+function AssetField({
+  label,
+  hint,
+  value,
+  accept,
+  busy,
+  shape = "round",
+  onChange,
+  onUpload,
+}: {
+  label: string;
+  hint: string;
+  value: string;
+  accept: string;
+  busy: boolean;
+  shape?: "round" | "wide";
+  onChange: (next: string) => void;
+  onUpload: (file: File) => void;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  const round = shape === "round";
+
+  return (
+    <div className="flex gap-3">
+      {value ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={value}
+          alt=""
+          className={cn("shrink-0 border border-[#e6e8ef] bg-[#f8f9fc] object-cover", round ? "h-14 w-14 rounded-full" : "h-14 w-24 rounded-xl")}
+        />
+      ) : (
+        <span className={cn("grid shrink-0 place-items-center border border-dashed border-[#d0d5dd] bg-[#f8f9fc] text-[11px] text-[#98a2b3]", round ? "h-14 w-14 rounded-full" : "h-14 w-24 rounded-xl")}>
+          {round ? "—" : "1200×630"}
+        </span>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#667085]">{label}</p>
+        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+          <input
+            ref={input}
+            type="file"
+            accept={accept}
+            className="sr-only"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              if (file) onUpload(file);
+            }}
+          />
+          <Button type="button" tone="ghost" className="px-3 py-1.5 text-sm" disabled={busy} onClick={() => input.current?.click()}>
+            <Upload size={14} />
+            {busy ? "Uploading…" : "Upload"}
+          </Button>
+          <button
+            type="button"
+            disabled={!value}
+            onClick={() => onChange("")}
+            className="text-sm text-[#667085] hover:text-[#1d2939] disabled:opacity-40"
+          >
+            × Use default
+          </button>
+        </div>
+        <TextInput
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder="https://"
+          className="mt-2"
+        />
+        <p className="mt-1 text-xs leading-5 text-[#667085]">{hint}</p>
+      </div>
+    </div>
   );
 }

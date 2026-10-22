@@ -7,7 +7,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteWidgets } from "@/components/site-widgets";
 import { JsonLd } from "@/components/json-ld";
 import { getCategories, getSite } from "@/lib/api";
-import { SITE_URL } from "@/lib/format";
+import { absolute, SITE_URL } from "@/lib/format";
 import "./globals.css";
 
 const sans = Instrument_Sans({ subsets: ["latin"], variable: "--font-instrument", display: "swap" });
@@ -15,6 +15,9 @@ const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500"], variabl
 
 export async function generateMetadata(): Promise<Metadata> {
   const site = await getSite();
+  const favicon = site.favicon || "/icon.svg";
+  const apple = site.appleTouchIcon || site.favicon || undefined;
+  const share = site.ogImage ? absolute(site.ogImage) : undefined;
   return {
     metadataBase: new URL(SITE_URL),
     title: { default: site.seoTitle, template: `%s | ${site.name}` },
@@ -22,8 +25,24 @@ export async function generateMetadata(): Promise<Metadata> {
     keywords: site.keywords,
     applicationName: site.name,
     alternates: { canonical: "/" },
-    openGraph: { type: "website", siteName: site.name, title: site.seoTitle, description: site.seoDescription, url: SITE_URL },
-    twitter: { card: "summary_large_image", title: site.seoTitle, description: site.seoDescription },
+    icons: {
+      icon: favicon,
+      apple: apple || undefined,
+    },
+    openGraph: {
+      type: "website",
+      siteName: site.name,
+      title: site.seoTitle,
+      description: site.seoDescription,
+      url: SITE_URL,
+      images: share ? [{ url: share, width: 1200, height: 630, alt: site.name }] : undefined,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: site.seoTitle,
+      description: site.seoDescription,
+      images: share ? [share] : undefined,
+    },
     robots: { index: true, follow: true },
   };
 }
@@ -54,7 +73,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </main>
           ) : (
             <>
-              <SiteHeader name={site.name} announcement={site.announcement} />
+              <SiteHeader name={site.name} announcement={site.announcement} logo={site.logo} showBismillah={site.showBismillah} />
               <main id="main">{children}</main>
               <SiteFooter site={site} categories={categories} />
               <SiteWidgets site={site} />
@@ -79,7 +98,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               url: SITE_URL,
               potentialAction: { "@type": "SearchAction", target: `${SITE_URL}/explore?q={search_term_string}`, "query-input": "required name=search_term_string" },
             },
-            { "@context": "https://schema.org", "@type": "Organization", name: site.name, url: SITE_URL, logo: `${SITE_URL}/icon.svg`, email: site.contactEmail },
+            { "@context": "https://schema.org", "@type": "Organization", name: site.name, url: SITE_URL, logo: absolute(site.logo || "/icon.svg"), email: site.contactEmail },
           ]}
         />
       </body>

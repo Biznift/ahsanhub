@@ -69,6 +69,11 @@ export type Site = {
   contactEmail: string;
   socials: Socials;
   announcement: string;
+  logo?: string;
+  favicon?: string;
+  appleTouchIcon?: string;
+  ogImage?: string;
+  showBismillah?: boolean;
   maintenance?: boolean;
   theme?: "light" | "dark" | "system";
   whatsapp?: string;

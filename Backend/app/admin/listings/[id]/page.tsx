@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { use } from "react";
+import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { useStore } from "@/components/store";
 import { Button } from "@/components/ui";
-import { Card, StatusPill, Switch, Thumb, api, formatDate, useApi } from "@/components/admin-kit";
+import { Card, ConfirmDialog, StatusPill, Switch, Thumb, api, formatDate, useApi } from "@/components/admin-kit";
 import { ListingEditor, type EditableListing } from "@/components/listing-editor";
 
 type Listing = EditableListing & {
@@ -29,6 +29,8 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
   const router = useRouter();
   const { notify } = useStore();
   const { data, error, setData } = useApi<Listing>(`/api/admin/listings/${id}`);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   async function patch(change: Partial<Pick<Listing, "status" | "featured" | "sponsored" | "halalVerified">>) {
     try {
@@ -40,10 +42,16 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
   }
 
   async function remove() {
-    if (!data || !window.confirm(`Delete ${data.name}? Its files are removed too.`)) return;
-    await api(`/api/admin/listings/${id}`, { method: "DELETE" });
-    notify(`${data.name} deleted`);
-    router.replace("/admin/listings");
+    if (!data) return;
+    setDeleting(true);
+    try {
+      await api(`/api/admin/listings/${id}`, { method: "DELETE" });
+      notify(`${data.name} permanently deleted`);
+      router.replace("/admin/listings");
+    } catch (problem) {
+      notify((problem as Error).message);
+      setDeleting(false);
+    }
   }
 
   if (error) return <p className="text-sm text-[var(--danger)]">{error}</p>;
@@ -110,10 +118,22 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
       </div>
 
       <Card title="Danger zone" className="mt-6">
-        <Button type="button" tone="danger" onClick={remove}>
-          Delete this listing
+        <p className="mb-3 text-sm text-[#667085]">Permanently delete removes this listing, its reviews, votes, and files. This cannot be undone.</p>
+        <Button type="button" tone="danger" onClick={() => setConfirmDelete(true)}>
+          Permanently delete
         </Button>
       </Card>
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title={`Permanently delete ${data.name}?`}
+          body="This listing will be removed from the site, along with its reviews, votes, and files. This cannot be undone."
+          confirmLabel="Yes, permanently delete"
+          busy={deleting}
+          onCancel={() => setConfirmDelete(false)}
+          onConfirm={remove}
+        />
+      )}
     </div>
   );
 }

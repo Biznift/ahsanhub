@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { cn } from "@/components/ui";
+import { Button, cn } from "@/components/ui";
 
 export function BrandMark({ compact = false }: { compact?: boolean }) {
   return (
@@ -110,6 +110,61 @@ export function Card({ title, description, children, className, action }: { titl
 
 export function Empty({ children }: { children: ReactNode }) {
   return <div className="rounded-xl border border-dashed border-[#d0d5dd] bg-white px-4 py-10 text-center text-sm text-[#667085]">{children}</div>;
+}
+
+/** Second step before a destructive action. Confirm is the only control that proceeds. */
+export function ConfirmDialog({
+  title,
+  body,
+  confirmLabel,
+  busy,
+  onCancel,
+  onConfirm,
+}: {
+  title: string;
+  body: string;
+  confirmLabel: string;
+  busy?: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape" && !busy) onCancel();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [busy, onCancel]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101828]/40 p-4" onClick={() => !busy && onCancel()}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-title"
+        className="w-full max-w-md rounded-xl border border-[#e6e8ef] bg-white p-5 shadow-xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <h2 id="confirm-title" className="text-lg font-semibold text-[#1d2939]">
+          {title}
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-[#475467]">{body}</p>
+        <div className="mt-5 flex justify-end gap-2">
+          <Button type="button" tone="ghost" onClick={onCancel} disabled={busy}>
+            Cancel
+          </Button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={busy}
+            className="inline-flex items-center justify-center rounded-lg bg-[#b42318] px-3.5 py-2.5 text-sm font-medium text-white hover:bg-[#912018] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {busy ? "Deleting…" : confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function formatDate(iso: string) {

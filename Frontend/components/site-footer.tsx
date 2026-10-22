@@ -10,7 +10,7 @@ export function SiteFooter({ site, categories }: { site: Site; categories: Categ
       <div className="mx-auto grid max-w-[1240px] gap-10 px-5 py-14 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div className="max-w-xs">
           <Link href="/" className="inline-flex items-center gap-2.5">
-            <LogoMark />
+            <LogoMark src={site.logo} />
             <span className="text-[17px] font-semibold tracking-[-0.02em] text-ink">{site.name}</span>
           </Link>
           <p className="mt-4 text-[14px] leading-relaxed text-muted">{site.tagline}</p>

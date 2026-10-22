@@ -23,6 +23,11 @@ export const DEFAULT_SITE: Site = {
   contactEmail: "hello@ahsanhub.com",
   socials: {},
   announcement: "",
+  logo: "",
+  favicon: "",
+  appleTouchIcon: "",
+  ogImage: "",
+  showBismillah: false,
 };
 
 export async function getSite() {

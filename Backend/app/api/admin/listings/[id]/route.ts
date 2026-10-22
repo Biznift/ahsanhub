@@ -59,11 +59,22 @@ export const PUT = route<Context>(async (request, { params }) => {
   return ok(toEditable(await load(existing.id)));
 });
 
+/** Removes the listing and everything that belongs to it. File cleanup must not undo a successful delete. */
 export const DELETE = route<Context>(async (_request, { params }) => {
   await requireAdmin();
   const existing = await load((await params).id);
-  await db.listing.delete({ where: { id: existing.id } });
-  await Promise.all([existing.logo, existing.banner, ...existing.founders.map((item) => item.photo)].map((item) => removeUpload(item)));
+  await db.$transaction([
+    db.review.deleteMany({ where: { listingId: existing.id } }),
+    db.vote.deleteMany({ where: { listingId: existing.id } }),
+    db.founder.deleteMany({ where: { listingId: existing.id } }),
+    db.listingCategory.deleteMany({ where: { listingId: existing.id } }),
+    db.listing.delete({ where: { id: existing.id } }),
+  ]);
+  await Promise.all(
+    [existing.logo, existing.banner, ...existing.founders.map((item) => item.photo)].map((item) =>
+      removeUpload(item).catch((error) => console.error("Listing file cleanup failed", error)),
+    ),
+  );
   revalidate("listings", `listing:${existing.slug}`, "categories");
   return ok({ ok: true });
 });
