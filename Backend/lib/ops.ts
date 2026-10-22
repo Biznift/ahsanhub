@@ -334,6 +334,63 @@ export function publicTelegram(stored: StoredTelegram) {
   };
 }
 
+export const storageInputSchema = z.object({
+  enabled: z.boolean(),
+  cloudName: z
+    .string()
+    .trim()
+    .max(80)
+    .regex(/^$|^[a-z0-9][a-z0-9_-]{0,63}$/i, "Cloud name should be letters, numbers, hyphens, or underscores."),
+  apiKey: z.string().max(80).optional(),
+  apiSecret: z.string().max(80).optional(),
+});
+
+export type StoredStorage = {
+  enabled: boolean;
+  cloudName: string;
+  apiKeySeal: string;
+  apiSecretSeal: string;
+};
+
+export const DEFAULT_STORAGE: StoredStorage = {
+  enabled: false,
+  cloudName: "",
+  apiKeySeal: "",
+  apiSecretSeal: "",
+};
+
+export async function readStorage(): Promise<StoredStorage> {
+  return readJson("storage", DEFAULT_STORAGE, (value) => {
+    const parsed = z
+      .object({
+        enabled: z.boolean().optional(),
+        cloudName: z.string().optional(),
+        apiKeySeal: z.string().optional(),
+        apiSecretSeal: z.string().optional(),
+      })
+      .safeParse(value);
+    if (!parsed.success) return DEFAULT_STORAGE;
+    return { ...DEFAULT_STORAGE, ...parsed.data };
+  });
+}
+
+export async function saveStorage(input: StoredStorage) {
+  await writeJson("storage", input);
+  return input;
+}
+
+export function publicStorage(stored: StoredStorage) {
+  const hasApiKey = Boolean(stored.apiKeySeal);
+  const hasApiSecret = Boolean(stored.apiSecretSeal);
+  return {
+    enabled: stored.enabled,
+    cloudName: stored.cloudName,
+    hasApiKey,
+    hasApiSecret,
+    configured: Boolean(stored.cloudName && hasApiKey && hasApiSecret),
+  };
+}
+
 export async function readProof(): Promise<ProofSettings> {
   return readJson("socialProof", DEFAULT_PROOF, (value) => {
     const parsed = proofSchema.partial().safeParse(value);

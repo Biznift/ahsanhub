@@ -28,4 +28,4 @@ Admin login: `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` from `Backend/.env`.
 
 `REVALIDATE_SECRET` must be the same in both `.env` files. The backend uses it to refresh frontend pages right after a listing, category, ad or setting changes. In production set `FRONTEND_URL` (backend) and `BACKEND_URL` (frontend) to the deployed addresses, and `NEXT_PUBLIC_SITE_URL` to the public domain.
 
-Uploaded files live in `Backend/storage/`. Keep that folder on a persistent disk when deploying.
+Uploaded files live in `Backend/storage/` until Cloudinary is connected in Admin → Media. After that, new files go to Cloudinary. Keep the local folder on a persistent disk for older files and backups.

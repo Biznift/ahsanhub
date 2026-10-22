@@ -7,8 +7,18 @@ const TYPES: Record<string, string> = {
   ".jpg": "image/jpeg",
   ".webp": "image/webp",
   ".gif": "image/gif",
+  ".svg": "image/svg+xml",
+  ".avif": "image/avif",
+  ".bmp": "image/bmp",
+  ".tiff": "image/tiff",
+  ".ico": "image/x-icon",
+  ".heic": "image/heic",
   ".mp4": "video/mp4",
   ".webm": "video/webm",
+  ".mov": "video/quicktime",
+  ".mp3": "audio/mpeg",
+  ".wav": "audio/wav",
+  ".ogg": "audio/ogg",
   ".pdf": "application/pdf",
 };
 

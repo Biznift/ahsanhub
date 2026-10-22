@@ -24,7 +24,7 @@ export default function BackupsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
           <div>
             <h2 className="font-semibold">Snapshots</h2>
-            <p className="text-sm text-[var(--muted)]">A snapshot stores the database rows. Uploaded files stay on disk. Restore asks you to type RESTORE.</p>
+            <p className="text-sm text-[var(--muted)]">A snapshot stores the database rows. Files on this server stay on disk; Cloudinary files stay in your cloud. Restore asks you to type RESTORE.</p>
           </div>
           <Button
             type="button"

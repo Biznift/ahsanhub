@@ -208,7 +208,7 @@ Cancelling an order from the Orders screen refunds a matching completed affiliat
 
 ## Other screens
 
-These are real interactions on demo state. Secrets are masked in the UI. Nothing is sent to PayStation, Cloudinary, Telegram, or an SMTP server.
+These are real interactions. Secrets are masked in the UI. SMTP, Telegram, and Cloudinary send to the connected accounts once credentials are saved. PayStation stays on demo state.
 
 | Screen | Behavior worth keeping |
 | --- | --- |
@@ -222,7 +222,7 @@ These are real interactions on demo state. Secrets are masked in the UI. Nothing
 | Branding | Identity, logo, icons, SEO title, description, keywords. |
 | Blog | Markdown body, cover, tags, draft or published. |
 | Content | Generic pages and posts. Search plus draft/published filter. |
-| Media | Library plus Cloudinary cloud name, API key, and API secret. Key and secret stay masked. |
+| Media | Library plus Cloudinary cloud name, API key, and API secret. Key and secret stay masked. When Cloudinary is on, new uploads go there. |
 | Notifications | Telegram on/off, bot token never returned, chat id, detect recent chats, event toggles, test message. |
 | Social proof | Cards on or off, how long a card stays, gap, how many times one log plays, signup versus purchase, hide one log. Public `GET /api/social-proof` is the feed a site toaster would read. |
 | Settings | Contact, theme, maintenance, social links, WhatsApp, analytics ids, invoice text, and which features stay in the menu. Hiding a feature removes it from the menu and keeps its data. Dashboard and Settings stay visible. |
