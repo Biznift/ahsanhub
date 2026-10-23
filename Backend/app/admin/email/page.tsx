@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { moduleBySlug } from "@/lib/catalog";
 import { ModuleFrame } from "@/components/frame";
 import { useStore } from "@/components/store";
+import { SecretInput } from "@/components/secret-input";
 import { Button, Field, TextInput } from "@/components/ui";
 import { api } from "@/components/admin-kit";
 
@@ -144,12 +145,7 @@ export default function EmailPage() {
             </div>
             <div className="sm:col-span-2">
               <Field label="Password / API key">
-                <TextInput
-                  type="password"
-                  value={password}
-                  placeholder={hasPassword ? "Saved. Leave blank to keep." : ""}
-                  onChange={(event) => setPassword(event.target.value)}
-                />
+                <SecretInput saved={hasPassword} value={password} onChange={setPassword} />
               </Field>
             </div>
             <div className="sm:col-span-2">

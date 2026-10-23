@@ -22,7 +22,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
     title: `Best ${category.name} tools in ${year}`,
     description: category.description || `Compare the best halal ${category.name.toLowerCase()} software and services in ${year}, with upvotes and reviews from the Ahsan Hub community.`,
     alternates: { canonical: `/category/${slug}` },
-    robots: query.q || query.pricing || query.page ? { index: false, follow: true } : undefined,
+    robots: query.q || query.pricing || query.page || query.view ? { index: false, follow: true } : undefined,
   };
 }
 
@@ -45,7 +45,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         description={category.description || `Halal ${category.name.toLowerCase()} software and services, reviewed by the Ahsan Hub team and ranked by the community.`}
       />
       <Container className="py-10">
-        <ListingBrowser base={`/category/${slug}`} params={{ q: query.q, pricing: query.pricing, sort: query.sort, page: query.page }} results={results} categories={categories} sponsored={ads?.sponsored ?? []} lockCategory />
+        <ListingBrowser base={`/category/${slug}`} params={{ q: query.q, pricing: query.pricing, sort: query.sort, page: query.page, view: query.view }} results={results} categories={categories} sponsored={ads?.sponsored ?? []} lockCategory />
       </Container>
       <JsonLd
         data={[

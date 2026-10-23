@@ -108,10 +108,11 @@ model Listing {
   kind         ListingKind       @default(software)
   ownerId      String?
   owner        User?             @relation(fields: [ownerId], references: [id], onDelete: SetNull)
-  categories   ListingCategory[]
-  founders     Founder[]
-  votes        Vote[]
-  reviews      Review[]
+  categories         ListingCategory[]
+  founders           Founder[]
+  votes              Vote[]
+  reviews            Review[]
+  alternatives       ListingAlternative[]
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
   publishedAt  DateTime?
@@ -119,6 +120,24 @@ model Listing {
   @@index([status, createdAt])
   @@index([status, voteCount])
   @@index([status, kind])
+}
+
+model AlternativeTool {
+  id        String               @id @default(cuid())
+  name      String
+  slug      String               @unique
+  createdAt DateTime             @default(now())
+  listings  ListingAlternative[]
+}
+
+model ListingAlternative {
+  listingId String
+  toolId    String
+  listing   Listing         @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  tool      AlternativeTool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@id([listingId, toolId])
+  @@index([toolId])
 }
 
 model ListingCategory {

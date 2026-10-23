@@ -5,6 +5,7 @@ import { Copy, FileText, Trash2 } from "lucide-react";
 import { moduleBySlug } from "@/lib/catalog";
 import { ModuleFrame } from "@/components/frame";
 import { useStore } from "@/components/store";
+import { SecretInput } from "@/components/secret-input";
 import { Button, Field, TextInput } from "@/components/ui";
 import { Card, Empty, api, formatDate, useApi } from "@/components/admin-kit";
 
@@ -141,22 +142,10 @@ export default function MediaPage() {
               </Field>
             </div>
             <Field label="API key">
-              <TextInput
-                type="password"
-                value={apiKey}
-                placeholder={hasApiKey ? "Saved. Leave blank to keep." : "123456789012345"}
-                onChange={(event) => setApiKey(event.target.value)}
-                autoComplete="off"
-              />
+              <SecretInput saved={hasApiKey} value={apiKey} onChange={setApiKey} placeholder="123456789012345" />
             </Field>
             <Field label="API secret">
-              <TextInput
-                type="password"
-                value={apiSecret}
-                placeholder={hasApiSecret ? "Saved. Leave blank to keep." : ""}
-                onChange={(event) => setApiSecret(event.target.value)}
-                autoComplete="off"
-              />
+              <SecretInput saved={hasApiSecret} value={apiSecret} onChange={setApiSecret} />
             </Field>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">

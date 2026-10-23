@@ -2,7 +2,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { HttpError, ok, readJson, route } from "@/lib/http";
 import { requireAdmin } from "@/lib/auth";
-import { revalidate } from "@/lib/directory";
+import { imageAddress, revalidate } from "@/lib/directory";
 import { slugify } from "@/lib/slug";
 
 type Context = { params: Promise<{ id: string }> };
@@ -13,7 +13,20 @@ const schema = z.object({
   excerpt: z.string().trim().max(300).optional(),
   body: z.string().max(100000).optional(),
   tags: z.string().trim().max(200).optional(),
-  cover: z.string().trim().max(300).optional(),
+  cover: z
+    .string()
+    .trim()
+    .max(2000)
+    .optional()
+    .refine((value) => {
+      if (!value) return true;
+      try {
+        imageAddress(value);
+        return true;
+      } catch {
+        return false;
+      }
+    }, "Enter an image URL starting with https://, or upload a file."),
   status: z.enum(["draft", "published"]).optional(),
   publishedAt: z.string().optional(),
 });

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { moduleBySlug } from "@/lib/catalog";
 import { ModuleFrame } from "@/components/frame";
 import { useStore } from "@/components/store";
+import { SecretInput } from "@/components/secret-input";
 import { Button, Field, TextInput } from "@/components/ui";
 import { api } from "@/components/admin-kit";
 
@@ -129,12 +130,7 @@ export default function NotificationsPage() {
           </details>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <Field label="Bot token">
-              <TextInput
-                type="password"
-                value={token}
-                placeholder={hasToken ? "Saved. Leave blank to keep." : "123456:ABC…"}
-                onChange={(event) => setToken(event.target.value)}
-              />
+              <SecretInput saved={hasToken} value={token} onChange={setToken} placeholder="123456:ABC…" />
             </Field>
             <Field label="Chat ID">
               <TextInput value={chatId} onChange={(event) => setChatId(event.target.value)} />

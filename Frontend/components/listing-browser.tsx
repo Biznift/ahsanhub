@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { Search, X } from "lucide-react";
+import { LayoutGrid, List, Search, X } from "lucide-react";
 import type { Category, ListingCard, Page } from "@/lib/types";
 import { KIND_LABEL, LISTING_KINDS, PRICING_LABEL, categoryKind, cn } from "@/lib/format";
 import type { ListingKind } from "@/lib/types";
-import { ProductCard } from "@/components/product-card";
+import { ProductCard, ProductRow } from "@/components/product-card";
 
-export type BrowseParams = { q?: string; category?: string; kind?: string; pricing?: string; sort?: string; page?: string };
+export type BrowseParams = { q?: string; category?: string; kind?: string; pricing?: string; sort?: string; page?: string; view?: string; alternative?: string };
 
 const KIND_NOUN: Record<ListingKind, [string, string]> = {
   software: ["product", "products"],
@@ -35,6 +35,7 @@ export function ListingBrowser({
   categories,
   sponsored,
   lockCategory = false,
+  alternativeName,
 }: {
   base: string;
   params: BrowseParams;
@@ -42,9 +43,12 @@ export function ListingBrowser({
   categories: Category[];
   sponsored: ListingCard[];
   lockCategory?: boolean;
+  alternativeName?: string;
 }) {
   const sort = params.sort ?? "new";
-  const filtered = Boolean(params.q || params.pricing || (!lockCategory && params.category));
+  const listView = params.view !== "grid";
+  const viewParams = { ...params, view: listView ? undefined : "grid" };
+  const filtered = Boolean(params.q || params.pricing || params.alternative || (!lockCategory && params.category));
   const cells: { listing: ListingCard; sponsored: boolean }[] = [];
   results.items.forEach((listing, index) => {
     cells.push({ listing, sponsored: false });
@@ -65,14 +69,16 @@ export function ListingBrowser({
           {params.category && !lockCategory && <input type="hidden" name="category" value={params.category} />}
           {params.pricing && <input type="hidden" name="pricing" value={params.pricing} />}
           {params.sort && <input type="hidden" name="sort" value={params.sort} />}
+          {!listView && <input type="hidden" name="view" value="grid" />}
+          {params.alternative && <input type="hidden" name="alternative" value={params.alternative} />}
         </form>
 
         <FilterGroup title="Pricing">
-          <FilterLink href={hrefFor(base, params, { pricing: undefined })} active={!params.pricing}>
+          <FilterLink href={hrefFor(base, viewParams, { pricing: undefined })} active={!params.pricing}>
             Any price
           </FilterLink>
           {Object.entries(PRICING_LABEL).map(([value, label]) => (
-            <FilterLink key={value} href={hrefFor(base, params, { pricing: value })} active={params.pricing === value}>
+            <FilterLink key={value} href={hrefFor(base, viewParams, { pricing: value })} active={params.pricing === value}>
               {label}
             </FilterLink>
           ))}
@@ -81,13 +87,13 @@ export function ListingBrowser({
         {!lockCategory &&
           (params.kind ? (
             <FilterGroup title="Category">
-              <FilterLink href={hrefFor(base, params, { category: undefined })} active={!params.category}>
+              <FilterLink href={hrefFor(base, viewParams, { category: undefined })} active={!params.category}>
                 All categories
               </FilterLink>
               {categories
                 .filter((category) => categoryKind(category) === params.kind)
                 .map((category) => (
-                  <FilterLink key={category.slug} href={hrefFor(base, params, { category: category.slug })} active={params.category === category.slug} count={category.count}>
+                  <FilterLink key={category.slug} href={hrefFor(base, viewParams, { category: category.slug })} active={params.category === category.slug} count={category.count}>
                     {category.name}
                   </FilterLink>
                 ))}
@@ -99,7 +105,7 @@ export function ListingBrowser({
               return (
                 <FilterGroup key={kind} title={KIND_LABEL[kind]}>
                   {group.map((category) => (
-                    <FilterLink key={category.slug} href={hrefFor(base, params, { kind, category: category.slug })} active={params.category === category.slug} count={category.count}>
+                    <FilterLink key={category.slug} href={hrefFor(base, viewParams, { kind, category: category.slug })} active={params.category === category.slug} count={category.count}>
                       {category.name}
                     </FilterLink>
                   ))}
@@ -112,11 +118,11 @@ export function ListingBrowser({
       <div className="min-w-0">
         {!lockCategory && (
           <div className="mb-5 flex flex-wrap gap-2" role="tablist" aria-label="Listing type">
-            <KindTab href={hrefFor(base, params, { kind: undefined, category: undefined })} active={!params.kind}>
+            <KindTab href={hrefFor(base, viewParams, { kind: undefined, category: undefined })} active={!params.kind}>
               All
             </KindTab>
             {LISTING_KINDS.map((kind) => (
-              <KindTab key={kind} href={hrefFor(base, params, { kind, category: undefined })} active={params.kind === kind}>
+              <KindTab key={kind} href={hrefFor(base, viewParams, { kind, category: undefined })} active={params.kind === kind}>
                 {KIND_LABEL[kind]}
               </KindTab>
             ))}
@@ -131,24 +137,52 @@ export function ListingBrowser({
                 for <span className="font-semibold text-ink">“{params.q}”</span>
               </>
             )}
+            {params.alternative && (
+              <>
+                {" "}
+                as alternatives to <span className="font-semibold text-ink">{alternativeName || "this tool"}</span>
+              </>
+            )}
             {filtered && (
-              <Link href={hrefFor(base, { kind: params.kind }, {})} className="ml-3 inline-flex items-center gap-1 font-medium text-brand-text">
+              <Link href={hrefFor(base, { kind: params.kind, view: listView ? undefined : "grid" }, {})} className="ml-3 inline-flex items-center gap-1 font-medium text-brand-text">
                 <X size={13} /> Clear filters
               </Link>
             )}
           </p>
-          <div className="flex rounded-xl border border-line bg-surface p-1" role="tablist" aria-label="Sort">
-            {SORTS.map((item) => (
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex rounded-xl border border-line bg-surface p-1" role="tablist" aria-label="Layout">
               <Link
-                key={item.value}
-                href={hrefFor(base, params, { sort: item.value === "new" ? undefined : item.value })}
+                href={hrefFor(base, viewParams, { view: "grid" })}
                 role="tab"
-                aria-selected={sort === item.value}
-                className={cn("rounded-lg px-3 py-1.5 text-[13px] font-semibold transition", sort === item.value ? "bg-ink text-bg" : "text-muted hover:text-ink")}
+                aria-selected={!listView}
+                aria-label="Grid view"
+                className={cn("grid h-8 w-8 place-items-center rounded-lg transition", !listView ? "bg-ink text-bg" : "text-muted hover:text-ink")}
               >
-                {item.label}
+                <LayoutGrid size={15} />
               </Link>
-            ))}
+              <Link
+                href={hrefFor(base, viewParams, { view: undefined })}
+                role="tab"
+                aria-selected={listView}
+                aria-label="List view"
+                className={cn("grid h-8 w-8 place-items-center rounded-lg transition", listView ? "bg-ink text-bg" : "text-muted hover:text-ink")}
+              >
+                <List size={15} />
+              </Link>
+            </div>
+            <div className="flex rounded-xl border border-line bg-surface p-1" role="tablist" aria-label="Sort">
+              {SORTS.map((item) => (
+                <Link
+                  key={item.value}
+                  href={hrefFor(base, viewParams, { sort: item.value === "new" ? undefined : item.value })}
+                  role="tab"
+                  aria-selected={sort === item.value}
+                  className={cn("rounded-lg px-3 py-1.5 text-[13px] font-semibold transition", sort === item.value ? "bg-ink text-bg" : "text-muted hover:text-ink")}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -160,6 +194,12 @@ export function ListingBrowser({
               Submit a listing
             </Link>
           </div>
+        ) : listView ? (
+          <div className="rounded-2xl border border-line bg-surface p-2">
+            {cells.map((cell, index) => (
+              <ProductRow key={`${cell.listing.id}-${index}`} listing={cell.listing} showSponsored={cell.sponsored} wrapOverview />
+            ))}
+          </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {cells.map((cell, index) => (
@@ -168,7 +208,7 @@ export function ListingBrowser({
           </div>
         )}
 
-        {results.pages > 1 && <Pagination base={base} params={params} page={results.page} pages={results.pages} />}
+        {results.pages > 1 && <Pagination base={base} params={viewParams} page={results.page} pages={results.pages} />}
       </div>
     </div>
   );

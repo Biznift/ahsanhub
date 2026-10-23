@@ -29,6 +29,25 @@ export function isPlacement(value: string): value is AdPlacement {
   return value in AD_PLACEMENTS;
 }
 
+/** A stored upload (`/files/…`) or any http(s) image link. Empty is allowed. */
+export function imageAddress(raw: string) {
+  const value = raw.trim();
+  if (!value) return "";
+  if (value.startsWith("/files/")) {
+    if (value.includes("..") || value.includes("\\") || value.includes("://")) throw new HttpError(400, "Image URL is not valid.");
+    return value;
+  }
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new HttpError(400, "Enter a full image URL, starting with https://.");
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") throw new HttpError(400, "Image URL must start with https://.");
+  if (url.username || url.password) throw new HttpError(400, "Image URL is not valid.");
+  return value;
+}
+
 export function normalizeUrl(raw: string) {
   const value = raw.trim();
   if (!value) return "";
@@ -93,6 +112,7 @@ const founderSchema = z.object({
   bio: z.string().trim().max(600).default(""),
   socials: socialsSchema,
   removePhoto: z.boolean().optional(),
+  photoUrl: z.string().trim().max(2000).optional(),
 });
 
 export const listingSchema = z
@@ -104,6 +124,7 @@ export const listingSchema = z
     pricing: z.enum(PRICING),
     kind: z.enum(LISTING_KINDS).default("software"),
     categoryIds: z.array(z.string()).max(5).default([]),
+    alternativeIds: z.array(z.string()).max(5, "Pick up to 5 alternative tools").default([]),
     proposedCategories: z.array(z.string().trim().min(2, "Category name is too short").max(60)).max(5).default([]),
     country: z.string().trim().max(60).default(""),
     platforms: z.array(z.enum(PLATFORMS)).default([]),
@@ -111,6 +132,8 @@ export const listingSchema = z
     socials: socialsSchema,
     founders: z.array(founderSchema).max(5, "Up to 5 founders").default([]),
     removeBanner: z.boolean().optional(),
+    logoUrl: z.string().trim().max(2000).optional(),
+    bannerUrl: z.string().trim().max(2000).optional(),
   })
   .superRefine((value, ctx) => {
     const names = new Set(value.proposedCategories.map((name) => name.toLowerCase()));
@@ -186,6 +209,16 @@ async function resolveCategoryIds(kind: ListingKind, categoryIds: string[], prop
   return ids;
 }
 
+/** Saved alternative-tool ids. Unknown ids are rejected so a listing can only point at tools that exist. */
+async function resolveAlternativeIds(alternativeIds: string[]) {
+  const unique = [...new Set(alternativeIds.filter(Boolean))];
+  if (unique.length > 5) throw new HttpError(400, "Pick up to 5 alternative tools.");
+  if (unique.length === 0) return [];
+  const rows = await db.alternativeTool.findMany({ where: { id: { in: unique } }, select: { id: true } });
+  if (rows.length !== unique.length) throw new HttpError(400, "One of the alternative tools is not available.");
+  return rows.map((row) => row.id);
+}
+
 /**
  * Validates the form, stores uploads, and returns the Prisma data for the listing columns.
  * Founders and categories are written by `writeRelations` after the listing row exists.
@@ -196,13 +229,16 @@ export async function prepareListing(form: FormData, input: ListingInput, existi
   if (textLength < 80) throw new HttpError(400, "Description needs at least 80 characters of text.");
 
   const logoFile = fileField(form, "logo");
-  if (!logoFile && !existing?.logo) throw new HttpError(400, "Upload a logo.");
+  const logoFromUrl = input.logoUrl?.trim() ? imageAddress(input.logoUrl) : "";
+  if (!logoFile && !logoFromUrl && !existing?.logo) throw new HttpError(400, "Upload a logo or paste an image URL.");
   const categoryIds = await resolveCategoryIds(input.kind, input.categoryIds, input.proposedCategories, existing?.id ?? null);
+  const alternativeIds = await resolveAlternativeIds(input.alternativeIds);
   const bannerFile = fileField(form, "banner");
 
-  const logo = logoFile ? (await saveUpload(logoFile, RULES.logo, "logos")).path : existing!.logo;
+  const logo = logoFile ? (await saveUpload(logoFile, RULES.logo, "logos")).path : logoFromUrl || existing!.logo;
   let banner = existing?.banner ?? null;
   if (bannerFile) banner = (await saveUpload(bannerFile, RULES.banner, "banners")).path;
+  else if (input.bannerUrl?.trim()) banner = imageAddress(input.bannerUrl);
   else if (input.removeBanner) banner = null;
 
   const founderPhotos: (string | null)[] = [];
@@ -210,6 +246,7 @@ export async function prepareListing(form: FormData, input: ListingInput, existi
     const file = fileField(form, `founderPhoto:${index}`);
     const previous = existing?.founders.find((item) => item.id === founder.id)?.photo ?? null;
     if (file) founderPhotos.push((await saveUpload(file, RULES.founder, "founders")).path);
+    else if (founder.photoUrl?.trim()) founderPhotos.push(imageAddress(founder.photoUrl));
     else founderPhotos.push(founder.removePhoto ? null : previous);
   }
 
@@ -240,6 +277,7 @@ export async function prepareListing(form: FormData, input: ListingInput, existi
       sortOrder: index,
     })),
     categoryIds,
+    alternativeIds,
     stale: stale as string[],
   };
 }
@@ -248,14 +286,19 @@ export async function writeRelations(listingId: string, prepared: Awaited<Return
   await db.$transaction([
     db.founder.deleteMany({ where: { listingId } }),
     db.listingCategory.deleteMany({ where: { listingId } }),
+    db.listingAlternative.deleteMany({ where: { listingId } }),
     db.founder.createMany({ data: prepared.founders.map((founder) => ({ ...founder, listingId })) }),
     db.listingCategory.createMany({ data: prepared.categoryIds.map((categoryId) => ({ listingId, categoryId })) }),
+    ...(prepared.alternativeIds.length
+      ? [db.listingAlternative.createMany({ data: prepared.alternativeIds.map((toolId) => ({ listingId, toolId })) })]
+      : []),
   ]);
   await Promise.all(prepared.stale.map((item) => removeUpload(item)));
 }
 
 export const cardInclude = {
   categories: { include: { category: { select: { name: true, slug: true, hidden: true, status: true } } } },
+  alternatives: { include: { tool: { select: { id: true, name: true, slug: true } } } },
 } satisfies Prisma.ListingInclude;
 
 type CardRow = Prisma.ListingGetPayload<{ include: typeof cardInclude }>;
@@ -282,6 +325,9 @@ export function toCard(row: CardRow, options?: { includeHidden?: boolean }) {
         status: item.category.status === "pending" ? ("pending" as const) : ("approved" as const),
       })),
     publishedAt: row.publishedAt?.toISOString() ?? null,
+    alternatives: row.alternatives
+      .map((item) => item.tool)
+      .sort((a, b) => a.name.localeCompare(b.name)),
   };
 }
 

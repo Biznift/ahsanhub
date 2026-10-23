@@ -47,6 +47,7 @@ export type ListingQuery = {
   featured?: boolean;
   page?: number;
   limit?: number;
+  alternative?: string;
 };
 
 export async function getListings(query: ListingQuery = {}): Promise<Page<ListingCard>> {
@@ -56,6 +57,10 @@ export async function getListings(query: ListingQuery = {}): Promise<Page<Listin
     params.set(key, value === true ? "1" : String(value));
   }
   return (await read<Page<ListingCard>>(`/api/public/listings?${params}`, ["listings"], 120)) ?? { items: [], total: 0, page: 1, pages: 1 };
+}
+
+export async function getAlternative(slug: string) {
+  return read<{ item: { id: string; name: string; slug: string } | null }>(`/api/public/alternatives?slug=${encodeURIComponent(slug)}`, ["listings"], 120);
 }
 
 export async function getListing(slug: string) {

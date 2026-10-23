@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { moduleBySlug } from "@/lib/catalog";
 import { ModuleFrame } from "@/components/frame";
 import { useStore } from "@/components/store";
+import { SecretInput } from "@/components/secret-input";
 import { Badge, Button, Field, TextInput } from "@/components/ui";
 
 export default function PaymentsPage() {
@@ -52,12 +53,7 @@ export default function PaymentsPage() {
           <TextInput value={merchantId} onChange={(event) => setMerchantId(event.target.value)} />
         </Field>
         <Field label="Password">
-          <TextInput
-            type="password"
-            value={password}
-            placeholder={gateway.hasPassword ? "Saved. Type to replace." : "Not set"}
-            onChange={(event) => setPassword(event.target.value)}
-          />
+          <SecretInput saved={gateway.hasPassword} value={password} onChange={setPassword} placeholder="Not set" />
         </Field>
         {gateway.lastTest && <p className="text-sm text-[var(--ok)]">{gateway.lastTest}</p>}
         <div className="flex gap-2">

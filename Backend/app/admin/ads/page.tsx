@@ -19,24 +19,27 @@ export default function AdsPage() {
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [fileUrl, setFileUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const size = data?.placements[placement];
 
   async function upload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!file) return setError("Choose a file.");
+    if (!file && !fileUrl.trim()) return setError("Upload a file or paste an image URL.");
     const form = new FormData();
     form.set("placement", placement);
     form.set("title", title);
     form.set("url", url);
-    form.set("file", file);
+    if (file) form.set("file", file);
+    else form.set("fileUrl", fileUrl.trim());
     setBusy(true);
     try {
       await api("/api/admin/ads", { method: "POST", body: form });
       setTitle("");
       setUrl("");
       setFile(null);
+      setFileUrl("");
       event.currentTarget?.reset();
       setError(null);
       notify("Creative uploaded");
@@ -114,7 +117,26 @@ export default function AdsPage() {
             <TextInput value={url} onChange={(event) => setUrl(event.target.value)} required placeholder="https://" />
           </Field>
           <Field label={size ? `File: ${size.width} × ${size.height} PNG, JPG, WebP, GIF, or MP4/WebM` : "File"}>
-            <input type="file" accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm" onChange={(event) => setFile(event.target.files?.[0] ?? null)} className="block w-full py-2 text-sm" />
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm"
+              onChange={(event) => {
+                const next = event.target.files?.[0] ?? null;
+                setFile(next);
+                if (next) setFileUrl("");
+              }}
+              className="block w-full py-2 text-sm"
+            />
+          </Field>
+          <Field label="or image URL">
+            <TextInput
+              value={fileUrl}
+              onChange={(event) => {
+                setFileUrl(event.target.value);
+                if (event.target.value.trim()) setFile(null);
+              }}
+              placeholder="https://res.cloudinary.com/… or any image link"
+            />
           </Field>
           {error && <p className="text-sm text-[var(--danger)] md:col-span-2">{error}</p>}
           <div className="md:col-span-2">

@@ -8,7 +8,7 @@ import { Container } from "@/components/section";
 import { Breadcrumbs } from "@/components/page-header";
 import { ListingLogo } from "@/components/listing-logo";
 import { UpvoteButton } from "@/components/upvote-button";
-import { CategoryChip, HalalBadge, KindBadge, PricingBadge } from "@/components/badges";
+import { AlternativeLinks, CategoryChip, HalalBadge, KindBadge, PricingBadge } from "@/components/badges";
 import { SocialLinks } from "@/components/social-links";
 import { AdSlot } from "@/components/ad-slot";
 import { ProductRow } from "@/components/product-card";
@@ -77,6 +77,11 @@ export default async function ProductPage({ params }: Props) {
               {listing.featured && <span className="inline-flex h-6 items-center rounded-md bg-ink px-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-bg">Featured</span>}
             </div>
             <p className="mt-2 max-w-[60ch] text-[17px] leading-relaxed text-muted">{listing.overview}</p>
+            {(listing.alternatives ?? []).length > 0 && (
+              <div className="mt-3">
+                <AlternativeLinks items={listing.alternatives} limit={5} />
+              </div>
+            )}
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <KindBadge kind={listing.kind} />
               <PricingBadge pricing={listing.pricing} />

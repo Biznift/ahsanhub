@@ -18,8 +18,10 @@ const querySchema = z.object({
   featured: z.enum(["1"]).optional(),
   page: z.coerce.number().int().min(1).max(500).default(1),
   limit: z.coerce.number().int().min(1).max(48).default(24),
+  alternative: z.string().trim().max(80).optional(),
 });
 
+/** Published listings for explore, search, and the alternative picker. */
 export const GET = route(async (request) => {
   const params = Object.fromEntries(new URL(request.url).searchParams);
   const query = querySchema.parse(params);
@@ -33,6 +35,7 @@ export const GET = route(async (request) => {
   if (query.kind) where.kind = query.kind;
   if (query.category) where.categories = { some: { category: { slug: query.category, hidden: false, status: "approved" } } };
   if (query.pricing) where.pricing = query.pricing;
+  if (query.alternative) where.alternatives = { some: { tool: { slug: query.alternative } } };
   if (query.featured || query.sort === "featured") where.featured = true;
 
   const orderBy: Prisma.ListingOrderByWithRelationInput[] =

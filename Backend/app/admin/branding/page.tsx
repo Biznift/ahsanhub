@@ -276,13 +276,11 @@ function AssetField({
             × Use default
           </button>
         </div>
-        <TextInput
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder="https://"
-          className="mt-2"
-        />
-        <p className="mt-1 text-xs leading-5 text-[#667085]">{hint}</p>
+          <label className="mt-2 block">
+            <span className="mb-1 block text-xs font-medium text-[#344054]">Image URL</span>
+            <TextInput value={value} onChange={(event) => onChange(event.target.value)} placeholder="https:// — Cloudinary or any image link" />
+          </label>
+          <p className="mt-1 text-xs leading-5 text-[#667085]">{hint} Upload a file, or paste a link from Cloudinary or another host.</p>
       </div>
     </div>
   );

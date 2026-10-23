@@ -2,7 +2,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { HttpError, ok, readJson, route } from "@/lib/http";
 import { requireAdmin } from "@/lib/auth";
-import { revalidate } from "@/lib/directory";
+import { imageAddress, revalidate } from "@/lib/directory";
 import { uniqueSlug } from "@/lib/slug";
 
 const querySchema = z.object({
@@ -40,7 +40,20 @@ const createSchema = z.object({
   excerpt: z.string().trim().max(300).default(""),
   body: z.string().max(100000).default(""),
   tags: z.string().trim().max(200).default(""),
-  cover: z.string().trim().max(300).default(""),
+  cover: z
+    .string()
+    .trim()
+    .max(2000)
+    .default("")
+    .refine((value) => {
+      if (!value) return true;
+      try {
+        imageAddress(value);
+        return true;
+      } catch {
+        return false;
+      }
+    }, "Enter an image URL starting with https://, or upload a file."),
   status: z.enum(["draft", "published"]).default("draft"),
   publishedAt: z.string().optional(),
 });

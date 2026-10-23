@@ -107,6 +107,10 @@ function ListingsScreen() {
             </button>
           ))}
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/admin/listings/new" className="inline-flex items-center justify-center rounded-lg bg-[#0b6e4f] px-3.5 py-2 text-sm font-semibold text-white hover:bg-[#095c42]">
+            Add listing
+          </Link>
         <form
           className="flex gap-2"
           onSubmit={(event) => {
@@ -119,6 +123,7 @@ function ListingsScreen() {
             Search
           </Button>
         </form>
+        </div>
       </div>
 
       {error && <p className="mt-4 text-sm text-[var(--danger)]">{error}</p>}

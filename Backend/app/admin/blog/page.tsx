@@ -116,6 +116,7 @@ export default function BlogPage() {
                       accept="image/*"
                       onChange={async (event) => {
                         const file = event.target.files?.[0];
+                        event.target.value = "";
                         if (!file || !editing) return;
                         const form = new FormData();
                         form.set("file", file);
@@ -128,7 +129,16 @@ export default function BlogPage() {
                       }}
                       className="block w-full text-sm text-[#667085] file:mr-3 file:rounded-md file:border-0 file:bg-[#e7f3ee] file:px-3 file:py-1.5 file:text-sm file:text-[#0b6e4f]"
                     />
-                    {editing.cover && <p className="mt-1 text-xs text-[#98a2b3]">{editing.cover}</p>}
+                    <TextInput
+                      value={editing.cover}
+                      onChange={(event) => setEditing({ ...editing, cover: event.target.value })}
+                      placeholder="or paste an image URL"
+                      className="mt-2"
+                    />
+                    {editing.cover && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={editing.cover} alt="" className="mt-2 h-16 w-28 rounded-md border border-[#e6e8ef] object-cover" />
+                    )}
                   </Field>
                   <Field label="Status">
                     <SelectInput value={editing.status} onChange={(event) => setEditing({ ...editing, status: event.target.value as Post["status"] })}>

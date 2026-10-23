@@ -1,7 +1,7 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { Plus, Trash2, X } from "lucide-react";
 import { Button, Field, SelectInput, TextInput, cn, controlClass } from "@/components/ui";
 import { RichText } from "@/components/rich-text";
 import { Card, useApi } from "@/components/admin-kit";
@@ -36,17 +36,20 @@ export type EditableListing = {
   kind: ListingKind;
   categoryIds: string[];
   founders: { id: string; name: string; role: string; bio: string; photo: string | null; socials: Record<string, string> }[];
+  alternatives?: { id: string; name: string; slug: string }[];
 };
 
-type FounderDraft = { id?: string; name: string; role: string; bio: string; photo: string | null; socials: Record<string, string>; file: File | null; removePhoto: boolean };
+type FounderDraft = { id?: string; name: string; role: string; bio: string; photo: string | null; photoUrl: string; socials: Record<string, string>; file: File | null; removePhoto: boolean };
 
 export function ListingEditor({ listing, onSave }: { listing: EditableListing; onSave: (form: FormData) => Promise<void> }) {
   const categories = useApi<{ items: { id: string; name: string; hidden: boolean; kind: ListingKind; status: "pending" | "approved" | "rejected" }[] }>("/api/admin/categories");
-  const [draft, setDraft] = useState({ ...listing, kind: listing.kind ?? "software" });
+  const [draft, setDraft] = useState({ ...listing, kind: listing.kind ?? "software", alternatives: listing.alternatives ?? [] });
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoUrl, setLogoUrl] = useState("");
   const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [bannerUrl, setBannerUrl] = useState("");
   const [removeBanner, setRemoveBanner] = useState(false);
-  const [founders, setFounders] = useState<FounderDraft[]>(listing.founders.map((item) => ({ ...item, file: null, removePhoto: false })));
+  const [founders, setFounders] = useState<FounderDraft[]>(listing.founders.map((item) => ({ ...item, photoUrl: "", file: null, removePhoto: false })));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,8 +76,11 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
         platforms: draft.platforms,
         halalNote: draft.halalNote,
         socials: draft.socials,
-        removeBanner,
-        founders: founders.map(({ id, name, role, bio, socials, removePhoto }) => ({ id, name, role, bio, socials, removePhoto })),
+        alternativeIds: draft.alternatives.map((item) => item.id),
+        removeBanner: bannerUrl.trim() ? false : removeBanner,
+        logoUrl,
+        bannerUrl,
+        founders: founders.map(({ id, name, role, bio, socials, removePhoto, photoUrl }) => ({ id, name, role, bio, socials, removePhoto, photoUrl })),
       }),
     );
     form.set("email", draft.contactEmail);
@@ -132,7 +138,7 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
             </SelectInput>
           </Field>
           <Field label="Contact email">
-            <TextInput type="email" value={draft.contactEmail} onChange={(event) => set({ contactEmail: event.target.value })} />
+            <TextInput type="email" value={draft.contactEmail} onChange={(event) => set({ contactEmail: event.target.value })} required />
           </Field>
           <Field label="Country">
             <TextInput value={draft.country} onChange={(event) => set({ country: event.target.value })} />
@@ -174,24 +180,76 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
             );
           })}
         </div>
+        <div className="mt-4">
+          <p className="mb-1.5 text-sm font-semibold text-[#344054]">Alternative tools ({draft.alternatives.length}/5)</p>
+          <p className="mb-2 text-xs text-[#667085]">Type to filter saved tools. Pick a match, or add a new name. It stays in the list for the next listing.</p>
+          <AlternativePicker selected={draft.alternatives} onChange={(alternatives) => set({ alternatives })} />
+        </div>
       </Card>
 
-      <Card title="Logo and banner" description="Logo: square PNG, JPG or WebP, 512 × 512 recommended, under 2 MB. Banner: optional 16:9, 1600 × 900 recommended, under 5 MB.">
-        <div className="grid gap-4 md:grid-cols-[160px_1fr]">
+      <Card title="Logo and banner" description="Upload a file, or paste a Cloudinary link or any other image URL. Logo: square PNG, JPG or WebP, 512 × 512 recommended, under 2 MB. Banner: optional 16:9, 1600 × 900 recommended, under 5 MB.">
+        <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <Preview src={logoFile ? URL.createObjectURL(logoFile) : draft.logo} className="aspect-square w-32" />
-            <input type="file" accept="image/png,image/jpeg,image/webp" className="mt-2 w-full text-xs" onChange={(event) => setLogoFile(event.target.files?.[0] ?? null)} />
+            <p className="mb-1.5 text-sm font-semibold text-[#344054]">Logo</p>
+            <Preview src={logoFile ? URL.createObjectURL(logoFile) : logoUrl.trim() || draft.logo} className="aspect-square w-32" />
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="mt-2 w-full text-xs"
+              onChange={(event) => {
+                setLogoFile(event.target.files?.[0] ?? null);
+                if (event.target.files?.[0]) setLogoUrl("");
+              }}
+            />
+            <Field label="or image URL">
+              <TextInput
+                value={logoUrl}
+                onChange={(event) => {
+                  setLogoUrl(event.target.value);
+                  if (event.target.value.trim()) setLogoFile(null);
+                }}
+                placeholder="https://res.cloudinary.com/… or any image link"
+                className="mt-1.5"
+              />
+            </Field>
           </div>
           <div>
-            <Preview src={bannerFile ? URL.createObjectURL(bannerFile) : removeBanner ? null : draft.banner} className="aspect-video w-full max-w-md" />
+            <p className="mb-1.5 text-sm font-semibold text-[#344054]">Banner</p>
+            <Preview src={bannerFile ? URL.createObjectURL(bannerFile) : bannerUrl.trim() ? bannerUrl.trim() : removeBanner ? null : draft.banner} className="aspect-video w-full max-w-md" />
             <div className="mt-2 flex flex-wrap items-center gap-3">
-              <input type="file" accept="image/png,image/jpeg,image/webp" className="text-xs" onChange={(event) => setBannerFile(event.target.files?.[0] ?? null)} />
-              {draft.banner && !bannerFile && (
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="text-xs"
+                onChange={(event) => {
+                  const file = event.target.files?.[0] ?? null;
+                  setBannerFile(file);
+                  if (file) {
+                    setBannerUrl("");
+                    setRemoveBanner(false);
+                  }
+                }}
+              />
+              {draft.banner && !bannerFile && !bannerUrl.trim() && (
                 <label className="flex items-center gap-1.5 text-sm text-[#475467]">
                   <input type="checkbox" checked={removeBanner} onChange={(event) => setRemoveBanner(event.target.checked)} /> Remove banner
                 </label>
               )}
             </div>
+            <Field label="or image URL">
+              <TextInput
+                value={bannerUrl}
+                onChange={(event) => {
+                  setBannerUrl(event.target.value);
+                  if (event.target.value.trim()) {
+                    setBannerFile(null);
+                    setRemoveBanner(false);
+                  }
+                }}
+                placeholder="https://"
+                className="mt-1.5"
+              />
+            </Field>
           </div>
         </div>
       </Card>
@@ -208,7 +266,7 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
         title="Founders"
         action={
           founders.length < 5 && (
-            <Button type="button" tone="ghost" onClick={() => setFounders((current) => [...current, { name: "", role: "", bio: "", photo: null, socials: {}, file: null, removePhoto: false }])}>
+            <Button type="button" tone="ghost" onClick={() => setFounders((current) => [...current, { name: "", role: "", bio: "", photo: null, photoUrl: "", socials: {}, file: null, removePhoto: false }])}>
               <Plus size={15} /> Add founder
             </Button>
           )
@@ -220,8 +278,16 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
             <div key={founder.id ?? `new-${index}`} className="rounded-lg border border-[#eef0f4] p-4">
               <div className="grid gap-3 md:grid-cols-[96px_1fr_1fr_auto]">
                 <div>
-                  <Preview src={founder.file ? URL.createObjectURL(founder.file) : founder.removePhoto ? null : founder.photo} className="aspect-square w-20 rounded-full" />
-                  <input type="file" accept="image/png,image/jpeg,image/webp" className="mt-2 w-24 text-[11px]" onChange={(event) => setFounder(index, { file: event.target.files?.[0] ?? null })} />
+                  <Preview src={founder.file ? URL.createObjectURL(founder.file) : founder.photoUrl.trim() ? founder.photoUrl.trim() : founder.removePhoto ? null : founder.photo} className="aspect-square w-20 rounded-full" />
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="mt-2 w-24 text-[11px]"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0] ?? null;
+                      setFounder(index, file ? { file, photoUrl: "", removePhoto: false } : { file });
+                    }}
+                  />
                 </div>
                 <Field label="Name">
                   <TextInput value={founder.name} onChange={(event) => setFounder(index, { name: event.target.value })} required />
@@ -232,6 +298,15 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
                 <button type="button" title="Remove founder" onClick={() => setFounders((current) => current.filter((_, at) => at !== index))} className="self-start rounded-md p-2 text-[#b42318] hover:bg-[#fdecea]">
                   <Trash2 size={16} />
                 </button>
+              </div>
+              <div className="mt-3">
+                <Field label="or photo URL">
+                  <TextInput
+                    value={founder.photoUrl}
+                    onChange={(event) => setFounder(index, event.target.value.trim() ? { photoUrl: event.target.value, file: null, removePhoto: false } : { photoUrl: event.target.value })}
+                    placeholder="https://res.cloudinary.com/… or any image link"
+                  />
+                </Field>
               </div>
               <div className="mt-3">
                 <Field label="Short bio">
@@ -258,6 +333,130 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
         </Button>
       </div>
     </form>
+  );
+}
+
+function AlternativePicker({
+  selected,
+  onChange,
+}: {
+  selected: { id: string; name: string; slug: string }[];
+  onChange: (next: { id: string; name: string; slug: string }[]) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const [results, setResults] = useState<{ id: string; name: string; slug: string }[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const full = selected.length >= 5;
+  const text = query.trim();
+  const exact = results.some((item) => item.name.toLowerCase() === text.toLowerCase()) || selected.some((item) => item.name.toLowerCase() === text.toLowerCase());
+
+  useEffect(() => {
+    if (!open || text.length === 0 || full) {
+      setResults([]);
+      return;
+    }
+    const handle = setTimeout(() => {
+      fetch(`/api/public/alternatives?q=${encodeURIComponent(text)}`)
+        .then((response) => (response.ok ? response.json() : { items: [] }))
+        .then((body: { items?: { id: string; name: string; slug: string }[] }) => {
+          const taken = new Set(selected.map((item) => item.id));
+          setResults((body.items ?? []).filter((item) => !taken.has(item.id)));
+        })
+        .catch(() => setResults([]));
+    }, 150);
+    return () => clearTimeout(handle);
+  }, [text, open, full, selected]);
+
+  useEffect(() => {
+    function onPointer(event: MouseEvent) {
+      if (!box.current?.contains(event.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointer);
+    return () => document.removeEventListener("mousedown", onPointer);
+  }, []);
+
+  function choose(item: { id: string; name: string; slug: string }) {
+    onChange([...selected, item]);
+    setQuery("");
+    setResults([]);
+    setError(null);
+    setOpen(false);
+  }
+
+  async function addNew() {
+    if (text.length < 2 || exact || full || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/public/alternatives", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: text }),
+      });
+      const body = (await response.json().catch(() => ({}))) as { id?: string; name?: string; slug?: string; error?: string };
+      if (!response.ok || !body.id || !body.name || !body.slug) throw new Error(body.error || "Could not save that tool.");
+      choose({ id: body.id, name: body.name, slug: body.slug });
+    } catch (problem) {
+      setError((problem as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const showMenu = open && !full && text.length > 0 && (results.length > 0 || text.length >= 2);
+
+  return (
+    <div ref={box}>
+      {selected.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-2">
+          {selected.map((item) => (
+            <span key={item.id} className="inline-flex items-center gap-1 rounded-full border border-[#0b6e4f] bg-[#e7f3ee] py-1 pl-3 pr-1.5 text-sm font-medium text-[#0b6e4f]">
+              {item.name}
+              <button type="button" className="rounded-full p-0.5 hover:bg-white" aria-label={`Remove ${item.name}`} onClick={() => onChange(selected.filter((current) => current.id !== item.id))}>
+                <X size={13} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="relative max-w-md">
+        <TextInput
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          placeholder={full ? "5 alternatives selected" : "Type a tool name"}
+          disabled={full}
+          role="combobox"
+          aria-expanded={showMenu}
+          aria-autocomplete="list"
+        />
+        {showMenu && (
+          <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-[#e6e8ef] bg-white py-1 shadow-lg" role="listbox">
+            {results.map((item) => (
+              <li key={item.id}>
+                <button type="button" className="w-full px-3 py-2 text-left text-sm text-[#1d2939] hover:bg-[#f5f6fa]" onClick={() => choose(item)}>
+                  {item.name}
+                </button>
+              </li>
+            ))}
+            {text.length >= 2 && !exact && (
+              <li>
+                <button type="button" className="w-full px-3 py-2 text-left text-sm font-semibold text-[#0b6e4f] hover:bg-[#f5f6fa]" disabled={busy} onClick={addNew}>
+                  {busy ? "Saving…" : `Add “${text}”`}
+                </button>
+              </li>
+            )}
+          </ul>
+        )}
+      </div>
+      {error && <p className="mt-1.5 text-xs text-[var(--danger)]">{error}</p>}
+    </div>
   );
 }
 

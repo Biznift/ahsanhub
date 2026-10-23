@@ -24,21 +24,21 @@ export default async function HomePage() {
         <Container className="grid gap-12 pb-16 pt-14 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-16 lg:pb-20 lg:pt-20">
           <div className="flex flex-col justify-center">
             <p className="text-[13px] font-medium text-muted">
-              <span className="font-semibold text-ink tabular-nums">{totalProducts}</span> products ·{" "}
+              <span className="font-semibold text-ink tabular-nums">{totalProducts}</span> listings ·{" "}
               <span className="font-semibold text-ink tabular-nums">{categories.length}</span> categories · reviewed by hand
             </p>
-            <h1 className="mt-5 max-w-[15ch] text-[42px] font-semibold leading-[1.04] tracking-[-0.035em] text-ink sm:text-[56px]">
-              Halal software, built by makers you can trust.
+            <h1 className="mt-5 max-w-[16ch] text-[42px] font-semibold leading-[1.04] tracking-[-0.035em] text-ink sm:text-[56px]">
+              Halal software, services, and shops.
             </h1>
-            <p className="mt-5 max-w-[52ch] text-[17px] leading-relaxed text-muted">
-              Ahsan Hub lists SaaS, apps and businesses that keep riba, gambling and harmful content out of their product. Upvote the tools you use, read honest reviews, and list your own for free.
+            <p className="mt-5 max-w-[54ch] text-[17px] leading-relaxed text-muted">
+              List a SaaS or app, a service you provide the halal way, or an Islamic online shop. People can browse all three, upvote what they trust, and read reviews. Listing is free.
             </p>
             <form action="/explore" className="mt-8 flex max-w-xl items-center gap-2 rounded-2xl border border-line bg-surface p-1.5 focus-within:border-brand">
               <Search size={18} className="ml-3 shrink-0 text-muted" aria-hidden="true" />
               <label htmlFor="hero-search" className="sr-only">
-                Search products
+                Search listings
               </label>
-              <input id="hero-search" name="q" placeholder="Search bookkeeping, CRM, Quran apps…" className="h-11 min-w-0 flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-muted" />
+              <input id="hero-search" name="q" placeholder="Search software, services, shops…" className="h-11 min-w-0 flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-muted" />
               <button type="submit" className="h-11 shrink-0 rounded-xl bg-brand px-5 text-[14px] font-semibold text-white transition hover:bg-brand-hover">
                 Search
               </button>
@@ -58,7 +58,7 @@ export default async function HomePage() {
                 </Link>
               ))}
               <Link href="/explore" className="inline-flex h-8 items-center gap-1 px-2 text-[13px] font-semibold text-brand-text">
-                Explore all products <ArrowRight size={14} />
+                Explore all listings <ArrowRight size={14} />
               </Link>
             </div>
           </div>
@@ -160,15 +160,15 @@ export default async function HomePage() {
           <div className="grid gap-10 rounded-3xl bg-ink px-6 py-12 text-bg sm:px-12 lg:grid-cols-[1.1fr_1fr] lg:items-center">
             <div>
               <h2 className="text-[30px] font-semibold leading-tight tracking-[-0.025em] sm:text-[36px]">Built something halal? Put it in front of the people looking for it.</h2>
-              <p className="mt-4 max-w-[48ch] text-[16px] leading-relaxed opacity-70">Listing is free. Add your company, founders and links in a few minutes, and we review every submission by hand.</p>
+              <p className="mt-4 max-w-[48ch] text-[16px] leading-relaxed opacity-70">Software, a service, or a shop. Listing is free. Add your details in a few minutes, and we review every submission by hand.</p>
               <Link href="/submit" className="mt-7 inline-flex h-11 items-center gap-2 rounded-xl bg-brand px-5 text-[15px] font-semibold text-white transition hover:bg-brand-hover">
-                Submit your product <ArrowRight size={16} />
+                Submit a listing <ArrowRight size={16} />
               </Link>
             </div>
             <ol className="grid gap-px overflow-hidden rounded-2xl border border-white/10 dark:border-black/10">
               {[
-                ["Submit", "Company name, website, logo, description and founders."],
-                ["Review", "We check the product and its halal practices, usually within a few days."],
+                ["Submit", "Software, a service, or a shop: name, website, logo, and what you offer."],
+                ["Review", "We check the listing and its halal practices, usually within a few days."],
                 ["Go live", "Your page is indexed, upvoted and can be featured on the home page."],
               ].map(([title, body], index) => (
                 <li key={title} className="flex gap-4 bg-white/[0.04] p-5 dark:bg-black/[0.04]">

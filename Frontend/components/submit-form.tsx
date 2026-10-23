@@ -3,14 +3,15 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState, type ReactNode } from "react";
 import { CircleAlert, Check, ImagePlus, Lock, Plus, Trash2, X } from "lucide-react";
-import type { Account, Category, EditableListing, ListingKind, Pricing, SocialKey, Socials } from "@/lib/types";
+import type { Account, AlternativeRef, Category, EditableListing, ListingKind, Pricing, SocialKey, Socials } from "@/lib/types";
 import { KIND_LABEL, LISTING_KINDS, PLATFORM_LABEL, PRICING_LABEL, categoryKind, cn } from "@/lib/format";
 import { CategoryPicker } from "@/components/category-picker";
+import { AlternativePicker } from "@/components/alternative-picker";
 import { IMAGE_RULES, checkImage, type ImageRule } from "@/lib/image-check";
 import { RichTextEditor } from "@/components/rich-text-editor";
 import { BrandIcon, SOCIAL_KEYS, SOCIAL_LABEL } from "@/components/brand-icons";
 
-type FounderDraft = { key: string; id?: string; name: string; role: string; bio: string; socials: Socials; photo: string | null; file: File | null; removePhoto: boolean };
+type FounderDraft = { key: string; id?: string; name: string; role: string; bio: string; socials: Socials; photo: string | null; photoUrl: string; file: File | null; removePhoto: boolean };
 
 type Draft = {
   name: string;
@@ -39,7 +40,7 @@ let keySeed = 0;
 const newKey = () => `f${++keySeed}`;
 
 function emptyFounder(): FounderDraft {
-  return { key: newKey(), name: "", role: "", bio: "", socials: {}, photo: null, file: null, removePhoto: false };
+  return { key: newKey(), name: "", role: "", bio: "", socials: {}, photo: null, photoUrl: "", file: null, removePhoto: false };
 }
 
 export function SubmitForm({ categories, existing }: { categories: Category[]; existing?: EditableListing }) {
@@ -61,10 +62,13 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
   }));
   const [textLength, setTextLength] = useState(existing ? 999 : 0);
   const [logo, setLogo] = useState<File | null>(null);
+  const [logoUrl, setLogoUrl] = useState("");
   const [banner, setBanner] = useState<File | null>(null);
+  const [bannerUrl, setBannerUrl] = useState("");
   const [removeBanner, setRemoveBanner] = useState(false);
+  const [alternatives, setAlternatives] = useState<AlternativeRef[]>(existing?.alternatives ?? []);
   const [founders, setFounders] = useState<FounderDraft[]>(() =>
-    existing?.founders.length ? existing.founders.map((founder) => ({ ...founder, key: newKey(), file: null, removePhoto: false })) : [emptyFounder()],
+    existing?.founders.length ? existing.founders.map((founder) => ({ ...founder, key: newKey(), photoUrl: "", file: null, removePhoto: false })) : [emptyFounder()],
   );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -88,7 +92,7 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError(null);
-    if (!editing && !logo) return fail("Upload a logo.", "media");
+    if (!editing && !logo && !logoUrl.trim()) return fail("Upload a logo or paste an image URL.", "media");
     if (draft.categoryIds.length + draft.proposedCategories.length === 0) return fail("Pick at least one category.", "company");
     if (textLength < 80) return fail("The description needs at least 80 characters.", "description");
 
@@ -97,10 +101,13 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
       "data",
       JSON.stringify({
         ...draft,
-        removeBanner,
+        alternativeIds: alternatives.map((item) => item.id),
+        removeBanner: bannerUrl.trim() ? false : removeBanner,
+        logoUrl,
+        bannerUrl,
         founders: founders
           .filter((founder) => founder.name.trim())
-          .map(({ id, name, role, bio, socials, removePhoto }) => ({ id, name, role, bio, socials, removePhoto })),
+          .map(({ id, name, role, bio, socials, removePhoto, photoUrl }) => ({ id, name, role, bio, socials, removePhoto, photoUrl })),
       }),
     );
     if (logo) form.set("logo", logo);
@@ -209,6 +216,9 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
               onChange={(next) => set(next)}
             />
           </Field>
+          <Field label="Alternative tools" hint={`${alternatives.length}/5. Type to find a saved tool, or add a new name. It stays in the list for the next listing.`}>
+            <AlternativePicker selected={alternatives} onChange={setAlternatives} />
+          </Field>
           <div className="grid gap-5 sm:grid-cols-2">
             <Field label="Based in" hint="Optional">
               <Input value={draft.country} onChange={(country) => set({ country })} maxLength={60} placeholder="United Kingdom" />
@@ -242,22 +252,29 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
             <ImageDrop
               label="Logo"
               required={!editing}
-              spec="Square · 512 × 512 · PNG, JPG or WebP · up to 2 MB"
+              spec="Square · 512 × 512 · PNG, JPG or WebP · up to 2 MB. Or paste a Cloudinary link or any image URL."
               rule={IMAGE_RULES.logo}
               file={logo}
+              url={logoUrl}
               current={existing?.logo ?? null}
               onFile={setLogo}
+              onUrl={setLogoUrl}
               shape="square"
             />
             <ImageDrop
               label="Banner"
-              spec="Optional · 16:9 landscape · 1600 × 900 · up to 5 MB"
+              spec="Optional · 16:9 landscape · 1600 × 900 · up to 5 MB. Or paste an image URL."
               rule={IMAGE_RULES.banner}
               file={banner}
+              url={bannerUrl}
               current={removeBanner ? null : (existing?.banner ?? null)}
               onFile={(file) => {
                 setBanner(file);
                 if (file) setRemoveBanner(false);
+              }}
+              onUrl={(value) => {
+                setBannerUrl(value);
+                if (value.trim()) setRemoveBanner(false);
               }}
               onRemoveCurrent={existing?.banner ? () => setRemoveBanner(true) : undefined}
               shape="wide"
@@ -440,8 +457,10 @@ function ImageDrop({
   spec,
   rule,
   file,
+  url = "",
   current,
   onFile,
+  onUrl,
   onRemoveCurrent,
   shape,
 }: {
@@ -450,19 +469,22 @@ function ImageDrop({
   spec: string;
   rule: ImageRule;
   file: File | null;
+  url?: string;
   current: string | null;
   onFile: (file: File | null) => void;
+  onUrl?: (url: string) => void;
   onRemoveCurrent?: () => void;
   shape: "square" | "wide" | "round";
 }) {
   const [problem, setProblem] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
-  const preview = usePreview(file) ?? current;
+  const preview = usePreview(file) ?? (url.trim() || null) ?? current;
 
   async function take(next: File | undefined) {
     if (!next) return;
     const message = await checkImage(next, rule);
     setProblem(message);
+    if (!message) onUrl?.("");
     onFile(message ? null : next);
   }
 
@@ -516,6 +538,19 @@ function ImageDrop({
           <X size={13} /> Remove
         </button>
       )}
+      {onUrl && shape !== "round" && (
+        <label className="mt-3 block">
+          <span className="mb-1.5 block text-[13px] font-medium text-ink">or paste an image URL</span>
+          <Input
+            value={url}
+            onChange={(value) => {
+              onUrl(value);
+              if (value.trim()) onFile(null);
+            }}
+            placeholder="https://res.cloudinary.com/… or any image link"
+          />
+        </label>
+      )}
       {problem && <p className="mt-1.5 text-[13px] text-danger">{problem}</p>}
     </div>
   );
@@ -556,7 +591,16 @@ function FounderCard({ founder, index, canRemove, onChange, onRemove }: { founde
       </div>
       <div className="mt-3 grid gap-5 sm:grid-cols-[88px_minmax(0,1fr)]">
         <div>
-          <ImageDrop label="Photo" spec="" rule={IMAGE_RULES.founder} file={founder.file} current={founder.removePhoto ? null : founder.photo} onFile={(file) => onChange({ file, removePhoto: false })} shape="round" />
+          <ImageDrop
+            label="Photo"
+            spec=""
+            rule={IMAGE_RULES.founder}
+            file={founder.file}
+            url={founder.photoUrl}
+            current={founder.removePhoto ? null : founder.photo}
+            onFile={(file) => onChange(file ? { file, photoUrl: "", removePhoto: false } : { file, removePhoto: false })}
+            shape="round"
+          />
           {(founder.file || (founder.photo && !founder.removePhoto)) && (
             <button type="button" onClick={() => onChange(founder.file ? { file: null } : { removePhoto: true })} className="mt-1 text-[12px] font-medium text-muted hover:text-danger">
               Remove
@@ -571,6 +615,15 @@ function FounderCard({ founder, index, canRemove, onChange, onRemove }: { founde
             <Field label="Role">
               <Input value={founder.role} onChange={(role) => onChange({ role })} maxLength={80} placeholder="Founder & CEO" />
             </Field>
+            <div className="sm:col-span-2">
+              <Field label="or photo URL">
+                <Input
+                  value={founder.photoUrl}
+                  onChange={(photoUrl) => onChange(photoUrl.trim() ? { photoUrl, file: null, removePhoto: false } : { photoUrl })}
+                  placeholder="https://res.cloudinary.com/… or any image link"
+                />
+              </Field>
+            </div>
           </div>
           <Field label="Short bio">
             <textarea

@@ -42,13 +42,13 @@ export function SiteHeader({
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-1.5">
-            <Link href="/explore#search" className="grid h-9 w-9 place-items-center rounded-lg text-muted transition hover:bg-band hover:text-ink" aria-label="Search products">
+            <Link href="/explore#search" className="grid h-9 w-9 place-items-center rounded-lg text-muted transition hover:bg-band hover:text-ink" aria-label="Search listings">
               <Search size={17} />
             </Link>
             <ThemeToggle />
             <AccountLink className="hidden rounded-lg px-3 py-2 text-[14px] font-medium text-ink-soft transition hover:bg-band hover:text-ink md:block" />
             <Link href="/submit" className="hidden h-9 items-center rounded-lg bg-brand px-4 text-[14px] font-semibold text-white transition hover:bg-brand-hover md:inline-flex">
-              Submit product
+              Submit listing
             </Link>
             <MobileNav />
           </div>

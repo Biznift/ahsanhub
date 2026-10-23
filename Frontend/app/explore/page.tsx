@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getAds, getCategories, getListings } from "@/lib/api";
+import { getAds, getAlternative, getCategories, getListings } from "@/lib/api";
 import { Container } from "@/components/section";
 import { PageHeader } from "@/components/page-header";
 import { ListingBrowser, type BrowseParams } from "@/components/listing-browser";
@@ -24,7 +24,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     description: "Browse halal software, services, and online shops on Ahsan Hub. Filter by type, category, and price.",
     alternates: { canonical: "/explore" },
     // Filtered and searched views are thin duplicates of the main list.
-    robots: params.q || params.pricing || params.page ? { index: false, follow: true } : undefined,
+    robots: params.q || params.pricing || params.page || params.view || params.alternative ? { index: false, follow: true } : undefined,
   };
 }
 
@@ -33,8 +33,10 @@ export default async function ExplorePage({ searchParams }: Props) {
   const kind = kindOf(params.kind);
   const sort = params.sort === "top" || params.sort === "featured" ? params.sort : "new";
   const page = Math.max(1, Number(params.page) || 1);
+  const alternative = params.alternative ? await getAlternative(params.alternative) : null;
+  const alternativeName = alternative?.item?.name;
   const [results, categories, ads] = await Promise.all([
-    getListings({ q: params.q, category: params.category, kind, pricing: params.pricing, sort, page, limit: 24 }),
+    getListings({ q: params.q, category: params.category, kind, pricing: params.pricing, sort, page, limit: 24, alternative: alternativeName ? params.alternative : undefined }),
     getCategories(),
     getAds("explore-inline"),
   ]);
@@ -43,11 +45,11 @@ export default async function ExplorePage({ searchParams }: Props) {
     <>
       <PageHeader
         crumbs={[{ href: "/", label: "Home" }, { label: "Explore" }]}
-        title={kind ? KIND_LABEL[kind] : TITLES[sort]}
+        title={alternativeName ? `Alternatives to ${alternativeName}` : kind ? KIND_LABEL[kind] : TITLES[sort]}
         description="Software, services, and shops are reviewed by a person before they go live. The full list shows every type, and each card says which one it is."
       />
       <Container className="py-10">
-        <ListingBrowser base="/explore" params={{ q: params.q, category: params.category, kind, pricing: params.pricing, sort: params.sort, page: params.page }} results={results} categories={categories} sponsored={ads?.sponsored ?? []} />
+        <ListingBrowser base="/explore" params={{ q: params.q, category: params.category, kind, pricing: params.pricing, sort: params.sort, page: params.page, view: params.view, alternative: alternativeName ? params.alternative : undefined }} results={results} categories={categories} sponsored={ads?.sponsored ?? []} alternativeName={alternativeName} />
       </Container>
       <JsonLd
         data={{

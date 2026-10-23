@@ -6,6 +6,8 @@ export type Socials = Partial<Record<SocialKey, string>>;
 
 export type CategoryRef = { name: string; slug: string; status?: "approved" | "pending" };
 
+export type AlternativeRef = { id: string; name: string; slug: string };
+
 export type Rating = { average: number; count: number } | null;
 
 export type ListingCard = {
@@ -21,6 +23,7 @@ export type ListingCard = {
   voteCount: number;
   kind: ListingKind;
   categories: CategoryRef[];
+  alternatives: AlternativeRef[];
   publishedAt: string | null;
   rating?: Rating;
 };
