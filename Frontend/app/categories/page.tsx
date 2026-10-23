@@ -25,7 +25,7 @@ export default async function CategoriesPage() {
           return (
             <section key={kind}>
               <h2 className="mb-4 text-[22px] font-semibold tracking-[-0.02em] text-ink">{KIND_LABEL[kind]}</h2>
-              <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {group.map((category) => (
             <li key={category.slug}>
               <Link href={`/category/${category.slug}`} className="group flex h-full items-start gap-4 rounded-2xl border border-line bg-surface p-5 transition hover:border-brand">
@@ -33,8 +33,8 @@ export default async function CategoriesPage() {
                   <CategoryIcon slug={category.slug} size={19} />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="flex items-center justify-between gap-2">
-                    <span className="text-[16px] font-semibold text-ink">{category.name}</span>
+                  <span className="flex items-start justify-between gap-2">
+                    <span className="min-w-0 text-[16px] font-semibold text-ink">{category.name}</span>
                     <ArrowUpRight size={16} className="text-muted transition group-hover:text-brand-text" />
                   </span>
                   <span className="mt-1 block text-[14px] leading-relaxed text-muted">{category.description || `Halal ${category.name.toLowerCase()} tools and services.`}</span>

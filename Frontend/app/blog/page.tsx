@@ -13,7 +13,7 @@ export default async function BlogPage() {
       {posts.length === 0 ? (
         <p className="text-muted">No posts yet.</p>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {posts.map((post) => (
             <Link key={post.slug} href={`/blog/${post.slug}`} className="overflow-hidden rounded-2xl border border-line bg-surface">
               {post.cover && <img src={post.cover} alt="" className="h-40 w-full object-cover" />}

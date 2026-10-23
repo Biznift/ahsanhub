@@ -30,7 +30,7 @@ export function Logo({
   return (
     <Link href="/" className={cn("inline-flex items-center gap-2.5", className)} aria-label={`${name} home`}>
       <LogoMark src={src} />
-      <span className="text-[17px] font-semibold tracking-[-0.02em] text-ink">{name}</span>
+      <span className="truncate text-[17px] font-semibold tracking-[-0.02em] text-ink">{name}</span>
     </Link>
   );
 }

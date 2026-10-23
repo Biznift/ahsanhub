@@ -7,7 +7,7 @@ export function SiteFooter({ site, categories }: { site: Site; categories: Categ
   const top = [...categories].sort((a, b) => b.count - a.count).slice(0, 6);
   return (
     <footer className="mt-24 border-t border-line bg-band">
-      <div className="mx-auto grid max-w-[1240px] gap-10 px-5 py-14 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+      <div className="mx-auto grid max-w-[1240px] grid-cols-1 gap-10 px-5 py-14 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div className="max-w-xs">
           <Link href="/" className="inline-flex items-center gap-2.5">
             <LogoMark src={site.logo} />
@@ -23,7 +23,7 @@ export function SiteFooter({ site, categories }: { site: Site; categories: Categ
         <FooterColumn title="For makers" links={[["/submit", "Submit a listing"], ["/account", "My listings"], ["/login", "Sign in"], ["/contact", "Contact"]]} />
       </div>
       <div className="border-t border-line">
-        <div className="mx-auto flex max-w-[1240px] flex-wrap items-center justify-between gap-3 px-5 py-6 text-[13px] text-muted">
+        <div className="mx-auto flex max-w-[1240px] flex-wrap items-center justify-between gap-3 px-5 py-6 pb-20 text-[13px] text-muted sm:pb-6">
           <p>
             © {new Date().getFullYear()} {site.name}. Listings are submitted by their makers and reviewed before publishing.
           </p>

@@ -13,8 +13,8 @@ export function ProductCard({ listing, showSponsored = false }: { listing: Listi
       <div className="flex items-start gap-4">
         <ListingLogo src={listing.logo} name={listing.name} size={52} />
         <div className="min-w-0 flex-1 pt-0.5">
-          <h3 className="flex items-center gap-2 text-[16px] font-semibold leading-snug tracking-[-0.01em] text-ink">
-            <Link href={`/product/${listing.slug}`} className="truncate after:absolute after:inset-0 after:rounded-2xl">
+          <h3 className="flex min-w-0 items-center gap-2 text-[16px] font-semibold leading-snug tracking-[-0.01em] text-ink">
+            <Link href={`/product/${listing.slug}`} className="min-w-0 truncate after:absolute after:inset-0 after:rounded-2xl">
               {listing.name}
             </Link>
           </h3>
@@ -51,12 +51,12 @@ export function ProductCard({ listing, showSponsored = false }: { listing: Listi
 /** Compact list row, used for "Recently added", rankings, and the explore list view. */
 export function ProductRow({ listing, rank, compact = false, showSponsored = false, wrapOverview = false, className }: { listing: ListingCard; rank?: number; compact?: boolean; showSponsored?: boolean; wrapOverview?: boolean; className?: string }) {
   return (
-    <article className={cn("group relative flex items-center rounded-xl px-3 transition hover:bg-band", compact ? "gap-3 py-2.5" : "gap-4 py-3.5", className)}>
-      {rank !== undefined && <span className="w-5 shrink-0 text-center text-[13px] font-semibold tabular-nums text-muted">{rank}</span>}
+    <article className={cn("group relative flex min-w-0 rounded-xl px-3 transition hover:bg-band", wrapOverview ? "items-start" : "items-center", compact ? "gap-3 py-2.5" : "gap-3 py-3.5 sm:gap-4", className)}>
+      {rank !== undefined && <span className="w-5 shrink-0 pt-1 text-center text-[13px] font-semibold tabular-nums text-muted">{rank}</span>}
       <ListingLogo src={listing.logo} name={listing.name} size={compact ? 40 : 48} />
       <div className="min-w-0 flex-1">
-        <h3 className="flex items-center gap-2 text-[15px] font-semibold leading-snug text-ink">
-          <Link href={`/product/${listing.slug}`} className="min-w-0 truncate after:absolute after:inset-0 after:rounded-xl">
+        <h3 className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[15px] font-semibold leading-snug text-ink">
+          <Link href={`/product/${listing.slug}`} className="min-w-0 max-w-full truncate after:absolute after:inset-0 after:rounded-xl">
             {listing.name}
           </Link>
           {showSponsored && listing.sponsored && <SponsoredBadge />}

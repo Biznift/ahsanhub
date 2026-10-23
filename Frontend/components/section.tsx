@@ -21,5 +21,5 @@ export function SectionHeader({ eyebrow, title, description, href, linkLabel = "
 }
 
 export function Container({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`mx-auto w-full max-w-[1240px] px-5 ${className}`}>{children}</div>;
+  return <div className={`mx-auto w-full min-w-0 max-w-[1240px] px-5 ${className}`}>{children}</div>;
 }

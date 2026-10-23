@@ -151,7 +151,7 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
   const sections = editing ? SECTIONS : [...SECTIONS, { id: "account", label: "Your account" }];
 
   return (
-    <form onSubmit={submit} className="grid gap-10 lg:grid-cols-[200px_minmax(0,1fr)]" noValidate={false}>
+    <form onSubmit={submit} className="grid grid-cols-1 gap-10 lg:grid-cols-[200px_minmax(0,1fr)]" noValidate={false}>
       <nav className="hidden lg:block" aria-label="Form sections">
         <ol className="sticky top-24 space-y-1 border-l border-line">
           {sections.map((section, index) => (

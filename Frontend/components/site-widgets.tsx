@@ -35,13 +35,13 @@ export function SiteWidgets({ site }: { site: Site }) {
           href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(site.whatsappMessage || "Assalamu alaikum")}`}
           target="_blank"
           rel="noreferrer"
-          className="fixed bottom-5 right-5 z-40 inline-flex h-12 items-center gap-2 rounded-full bg-[#128C7E] px-4 text-sm font-semibold text-white shadow-lg"
+          className="fixed bottom-4 right-4 z-40 inline-flex h-12 items-center gap-2 rounded-full bg-[#128C7E] px-4 text-sm font-semibold text-white shadow-lg max-sm:w-12 max-sm:justify-center max-sm:px-0"
         >
-          <MessageCircle size={18} /> WhatsApp
+          <MessageCircle size={18} /> <span className="max-sm:sr-only">WhatsApp</span>
         </a>
       )}
       {proof && (
-        <div className="fixed bottom-5 left-5 z-40 max-w-xs rounded-2xl border border-line bg-surface px-4 py-3 text-sm text-ink shadow-lg">
+        <div className="fixed bottom-4 left-4 right-20 z-40 rounded-2xl border border-line bg-surface px-4 py-3 text-sm text-ink shadow-lg sm:right-auto sm:max-w-xs">
           {proof.message}
         </div>
       )}

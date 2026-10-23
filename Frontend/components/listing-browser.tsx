@@ -57,7 +57,7 @@ export function ListingBrowser({
   });
 
   return (
-    <div className="grid gap-10 lg:grid-cols-[240px_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10">
       <aside className="lg:sticky lg:top-24 lg:self-start">
         <form action={base} id="search" className="flex items-center gap-2 rounded-xl border border-line bg-surface px-3 focus-within:border-brand">
           <Search size={16} className="shrink-0 text-muted" aria-hidden="true" />
@@ -73,46 +73,15 @@ export function ListingBrowser({
           {params.alternative && <input type="hidden" name="alternative" value={params.alternative} />}
         </form>
 
-        <FilterGroup title="Pricing">
-          <FilterLink href={hrefFor(base, viewParams, { pricing: undefined })} active={!params.pricing}>
-            Any price
-          </FilterLink>
-          {Object.entries(PRICING_LABEL).map(([value, label]) => (
-            <FilterLink key={value} href={hrefFor(base, viewParams, { pricing: value })} active={params.pricing === value}>
-              {label}
-            </FilterLink>
-          ))}
-        </FilterGroup>
-
-        {!lockCategory &&
-          (params.kind ? (
-            <FilterGroup title="Category">
-              <FilterLink href={hrefFor(base, viewParams, { category: undefined })} active={!params.category}>
-                All categories
-              </FilterLink>
-              {categories
-                .filter((category) => categoryKind(category) === params.kind)
-                .map((category) => (
-                  <FilterLink key={category.slug} href={hrefFor(base, viewParams, { category: category.slug })} active={params.category === category.slug} count={category.count}>
-                    {category.name}
-                  </FilterLink>
-                ))}
-            </FilterGroup>
-          ) : (
-            LISTING_KINDS.map((kind) => {
-              const group = categories.filter((category) => categoryKind(category) === kind);
-              if (group.length === 0) return null;
-              return (
-                <FilterGroup key={kind} title={KIND_LABEL[kind]}>
-                  {group.map((category) => (
-                    <FilterLink key={category.slug} href={hrefFor(base, viewParams, { kind, category: category.slug })} active={params.category === category.slug} count={category.count}>
-                      {category.name}
-                    </FilterLink>
-                  ))}
-                </FilterGroup>
-              );
-            })
-          ))}
+        <div className="hidden lg:block">
+          <Filters base={base} params={params} viewParams={viewParams} categories={categories} lockCategory={lockCategory} />
+        </div>
+        <details open={Boolean(params.pricing || params.category)} className="mt-4 rounded-xl border border-line bg-surface lg:hidden">
+          <summary className="cursor-pointer list-none px-3 py-2.5 text-[14px] font-semibold text-ink [&::-webkit-details-marker]:hidden">Filters</summary>
+          <div className="border-t border-line px-2 pb-3">
+            <Filters base={base} params={params} viewParams={viewParams} categories={categories} lockCategory={lockCategory} />
+          </div>
+        </details>
       </aside>
 
       <div className="min-w-0">
@@ -128,7 +97,7 @@ export function ListingBrowser({
             ))}
           </div>
         )}
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <p className="text-[14px] text-muted">
             <span className="font-semibold tabular-nums text-ink">{results.total}</span> {countLabel(results.total, params.kind)}
             {params.q && (
@@ -149,8 +118,8 @@ export function ListingBrowser({
               </Link>
             )}
           </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex rounded-xl border border-line bg-surface p-1" role="tablist" aria-label="Layout">
+          <div className="flex max-w-full flex-wrap items-center gap-2">
+            <div className="flex shrink-0 rounded-xl border border-line bg-surface p-1" role="tablist" aria-label="Layout">
               <Link
                 href={hrefFor(base, viewParams, { view: "grid" })}
                 role="tab"
@@ -170,14 +139,14 @@ export function ListingBrowser({
                 <List size={15} />
               </Link>
             </div>
-            <div className="flex rounded-xl border border-line bg-surface p-1" role="tablist" aria-label="Sort">
+            <div className="flex max-w-full overflow-x-auto rounded-xl border border-line bg-surface p-1" role="tablist" aria-label="Sort">
               {SORTS.map((item) => (
                 <Link
                   key={item.value}
                   href={hrefFor(base, viewParams, { sort: item.value === "new" ? undefined : item.value })}
                   role="tab"
                   aria-selected={sort === item.value}
-                  className={cn("rounded-lg px-3 py-1.5 text-[13px] font-semibold transition", sort === item.value ? "bg-ink text-bg" : "text-muted hover:text-ink")}
+                  className={cn("shrink-0 rounded-lg px-2.5 py-1.5 text-[12px] font-semibold whitespace-nowrap transition sm:px-3 sm:text-[13px]", sort === item.value ? "bg-ink text-bg" : "text-muted hover:text-ink")}
                 >
                   {item.label}
                 </Link>
@@ -201,7 +170,7 @@ export function ListingBrowser({
             ))}
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {cells.map((cell, index) => (
               <ProductCard key={`${cell.listing.id}-${index}`} listing={cell.listing} showSponsored={cell.sponsored} />
             ))}
@@ -227,11 +196,70 @@ function KindTab({ href, active, children }: { href: string; active: boolean; ch
   );
 }
 
+function Filters({
+  base,
+  params,
+  viewParams,
+  categories,
+  lockCategory,
+}: {
+  base: string;
+  params: BrowseParams;
+  viewParams: BrowseParams;
+  categories: Category[];
+  lockCategory?: boolean;
+}) {
+  return (
+    <>
+      <FilterGroup title="Pricing">
+        <FilterLink href={hrefFor(base, viewParams, { pricing: undefined })} active={!params.pricing}>
+          Any price
+        </FilterLink>
+        {Object.entries(PRICING_LABEL).map(([value, label]) => (
+          <FilterLink key={value} href={hrefFor(base, viewParams, { pricing: value })} active={params.pricing === value}>
+            {label}
+          </FilterLink>
+        ))}
+      </FilterGroup>
+
+      {!lockCategory &&
+        (params.kind ? (
+          <FilterGroup title="Category">
+            <FilterLink href={hrefFor(base, viewParams, { category: undefined })} active={!params.category}>
+              All categories
+            </FilterLink>
+            {categories
+              .filter((category) => categoryKind(category) === params.kind)
+              .map((category) => (
+                <FilterLink key={category.slug} href={hrefFor(base, viewParams, { category: category.slug })} active={params.category === category.slug} count={category.count}>
+                  {category.name}
+                </FilterLink>
+              ))}
+          </FilterGroup>
+        ) : (
+          LISTING_KINDS.map((kind) => {
+            const group = categories.filter((category) => categoryKind(category) === kind);
+            if (group.length === 0) return null;
+            return (
+              <FilterGroup key={kind} title={KIND_LABEL[kind]}>
+                {group.map((category) => (
+                  <FilterLink key={category.slug} href={hrefFor(base, viewParams, { kind, category: category.slug })} active={params.category === category.slug} count={category.count}>
+                    {category.name}
+                  </FilterLink>
+                ))}
+              </FilterGroup>
+            );
+          })
+        ))}
+    </>
+  );
+}
+
 function FilterGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="mt-7">
+    <div className="mt-5 lg:mt-7">
       <p className="mb-2 px-2 text-[12px] font-semibold uppercase tracking-[0.1em] text-muted">{title}</p>
-      <ul className="scrollbar-none -mx-5 flex gap-1 overflow-x-auto px-5 lg:mx-0 lg:block lg:space-y-0.5 lg:overflow-visible lg:px-0">{children}</ul>
+      <ul className="flex flex-wrap gap-1 lg:block lg:space-y-0.5">{children}</ul>
     </div>
   );
 }

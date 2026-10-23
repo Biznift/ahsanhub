@@ -40,7 +40,7 @@ export function AlternativeLinks({ items, limit = 3 }: { items: { id?: string; n
       <span className="shrink-0">Alternative to</span>
       {shown.map((item, index) => (
         <span key={item.id ?? item.slug} className="inline-flex min-w-0 items-baseline">
-          <Link href={`/explore?alternative=${item.slug}`} className="font-semibold text-brand-text hover:underline">
+          <Link href={`/explore?alternative=${item.slug}`} className="break-words font-semibold text-brand-text hover:underline">
             {item.name}
           </Link>
           {index < shown.length - 1 && <span aria-hidden="true">,</span>}

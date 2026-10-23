@@ -31,7 +31,7 @@ export function PageHeader({ crumbs, title, description, children }: { crumbs: {
     <section className="border-b border-line bg-band">
       <Container className="py-10 sm:py-12">
         <Breadcrumbs items={crumbs} />
-        <h1 className="mt-4 text-[34px] font-semibold leading-tight tracking-[-0.03em] text-ink sm:text-[42px]">{title}</h1>
+        <h1 className="mt-4 text-balance text-[28px] font-semibold leading-tight tracking-[-0.03em] text-ink sm:text-[34px] lg:text-[42px]">{title}</h1>
         {description && <p className="mt-3 max-w-[64ch] text-[16px] leading-relaxed text-muted">{description}</p>}
         {children}
       </Container>

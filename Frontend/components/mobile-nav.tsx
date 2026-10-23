@@ -11,7 +11,7 @@ export function MobileNav() {
   const [open, setOpen] = useState(false);
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
-      <Dialog.Trigger className="grid h-9 w-9 place-items-center rounded-lg text-ink hover:bg-band md:hidden" aria-label="Open menu">
+      <Dialog.Trigger className="grid h-9 w-9 place-items-center rounded-lg text-ink hover:bg-band lg:hidden" aria-label="Open menu">
         <Menu size={19} />
       </Dialog.Trigger>
       <Dialog.Portal>
@@ -32,7 +32,7 @@ export function MobileNav() {
             ))}
             <AccountLink className="rounded-lg px-3 py-2.5 text-[15px] font-medium text-ink hover:bg-band" />
             <Link href="/submit" className="mt-3 rounded-lg bg-brand px-4 py-3 text-center text-[15px] font-semibold text-white">
-              Submit your product
+              Submit a listing
             </Link>
           </nav>
         </Dialog.Content>

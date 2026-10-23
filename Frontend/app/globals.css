@@ -83,8 +83,18 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-sans);
+  overflow-x: clip;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Kept in the base layer so width and height utilities can still override it.
+   A grid item's default min-width is the longest unwrapped line, which was
+   stretching every page wider than a phone. */
+@layer base {
+  .grid > * {
+    min-width: 0;
+  }
 }
 
 ::selection {
@@ -118,6 +128,23 @@ body {
 .prose-listing blockquote { margin: 1.2rem 0; border-left: 2px solid var(--brand); padding-left: 1rem; color: var(--ink); }
 .prose-listing code { border-radius: 6px; background: var(--band); padding: 0.1rem 0.35rem; font-family: var(--font-mono); font-size: 0.9em; }
 .prose-listing hr { margin: 2rem 0; border-color: var(--line); }
+.prose-listing img,
+.prose img,
+.prose-listing video,
+.prose video,
+.prose-listing iframe,
+.prose iframe {
+  max-width: 100%;
+  height: auto;
+}
+.prose-listing pre,
+.prose pre,
+.prose-listing table,
+.prose table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
 
 .tiptap { outline: none; min-height: 260px; }
 .tiptap p.is-editor-empty:first-child::before {

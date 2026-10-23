@@ -21,25 +21,25 @@ export default async function HomePage() {
   return (
     <>
       <section className="border-b border-line">
-        <Container className="grid gap-12 pb-16 pt-14 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-16 lg:pb-20 lg:pt-20">
+        <Container className="grid grid-cols-1 gap-12 pb-12 pt-10 sm:pb-16 sm:pt-14 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-16 lg:pb-20 lg:pt-20">
           <div className="flex flex-col justify-center">
             <p className="text-[13px] font-medium text-muted">
               <span className="font-semibold text-ink tabular-nums">{totalProducts}</span> listings ·{" "}
               <span className="font-semibold text-ink tabular-nums">{categories.length}</span> categories · reviewed by hand
             </p>
-            <h1 className="mt-5 max-w-[16ch] text-[42px] font-semibold leading-[1.04] tracking-[-0.035em] text-ink sm:text-[56px]">
+            <h1 className="mt-5 max-w-[16ch] text-[32px] font-semibold leading-[1.08] tracking-[-0.035em] text-ink sm:text-[42px] lg:text-[56px]">
               Halal software, services, and shops.
             </h1>
             <p className="mt-5 max-w-[54ch] text-[17px] leading-relaxed text-muted">
               List a SaaS or app, a service you provide the halal way, or an Islamic online shop. People can browse all three, upvote what they trust, and read reviews. Listing is free.
             </p>
             <form action="/explore" className="mt-8 flex max-w-xl items-center gap-2 rounded-2xl border border-line bg-surface p-1.5 focus-within:border-brand">
-              <Search size={18} className="ml-3 shrink-0 text-muted" aria-hidden="true" />
+              <Search size={18} className="ml-2 shrink-0 text-muted sm:ml-3" aria-hidden="true" />
               <label htmlFor="hero-search" className="sr-only">
                 Search listings
               </label>
               <input id="hero-search" name="q" placeholder="Search software, services, shops…" className="h-11 min-w-0 flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-muted" />
-              <button type="submit" className="h-11 shrink-0 rounded-xl bg-brand px-5 text-[14px] font-semibold text-white transition hover:bg-brand-hover">
+              <button type="submit" className="h-11 shrink-0 rounded-xl bg-brand px-3.5 text-[14px] font-semibold text-white transition hover:bg-brand-hover sm:px-5">
                 Search
               </button>
             </form>
@@ -64,14 +64,14 @@ export default async function HomePage() {
           </div>
 
           <div className="rounded-2xl border border-line bg-surface">
-            <div className="flex items-center justify-between border-b border-line px-5 py-4">
-              <div>
+            <div className="border-b border-line px-4 py-4 sm:px-5">
+              <div className="flex items-center justify-between gap-3">
                 <h2 className="text-[15px] font-semibold text-ink">Most upvoted</h2>
-                <p className="text-[13px] text-muted">Ranked by the community, no account needed to vote</p>
+                <Link href="/explore?sort=top" className="shrink-0 text-[13px] font-semibold text-brand-text">
+                  Full ranking
+                </Link>
               </div>
-              <Link href="/explore?sort=top" className="text-[13px] font-semibold text-brand-text">
-                Full ranking
-              </Link>
+              <p className="mt-0.5 text-[13px] text-muted">Ranked by the community, no account needed to vote</p>
             </div>
             <div className="p-2">
               {top.items.length === 0 && <p className="px-3 py-10 text-center text-[14px] text-muted">The first products are being reviewed.</p>}
@@ -91,7 +91,7 @@ export default async function HomePage() {
         <section className="mt-16">
           <Container>
             <SectionHeader eyebrow="Editor's picks" title="Featured products" description="Hand-picked by the Ahsan Hub team for quality, support and how they handle money and data." href="/explore?sort=featured" />
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {featured.items.map((listing) => (
                 <ProductCard key={listing.id} listing={listing} />
               ))}
@@ -106,7 +106,7 @@ export default async function HomePage() {
           {recent.items.length === 0 ? (
             <p className="text-[15px] text-muted">Nothing here yet.</p>
           ) : (
-            <div className="grid gap-x-6 rounded-2xl border border-line bg-surface p-2 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-x-6 rounded-2xl border border-line bg-surface p-2 md:grid-cols-2">
               {recent.items.map((listing) => (
                 <ProductRow key={listing.id} listing={listing} />
               ))}
@@ -119,7 +119,7 @@ export default async function HomePage() {
         <section className="mt-16">
           <Container>
             <SectionHeader eyebrow="No card needed" title="Free to use" description="Fully free products, ranked by upvotes." href="/explore?pricing=free&sort=top" />
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {free.items.map((listing) => (
                 <ProductCard key={listing.id} listing={listing} />
               ))}
@@ -157,9 +157,9 @@ export default async function HomePage() {
 
       <section className="mt-20">
         <Container>
-          <div className="grid gap-10 rounded-3xl bg-ink px-6 py-12 text-bg sm:px-12 lg:grid-cols-[1.1fr_1fr] lg:items-center">
-            <div>
-              <h2 className="text-[30px] font-semibold leading-tight tracking-[-0.025em] sm:text-[36px]">Built something halal? Put it in front of the people looking for it.</h2>
+          <div className="grid grid-cols-1 gap-10 rounded-3xl bg-ink px-5 py-10 text-bg sm:px-12 sm:py-12 lg:grid-cols-[1.1fr_1fr] lg:items-center">
+            <div className="min-w-0">
+              <h2 className="text-[26px] font-semibold leading-tight tracking-[-0.025em] sm:text-[36px]">Built something halal? Put it in front of the people looking for it.</h2>
               <p className="mt-4 max-w-[48ch] text-[16px] leading-relaxed opacity-70">Software, a service, or a shop. Listing is free. Add your details in a few minutes, and we review every submission by hand.</p>
               <Link href="/submit" className="mt-7 inline-flex h-11 items-center gap-2 rounded-xl bg-brand px-5 text-[15px] font-semibold text-white transition hover:bg-brand-hover">
                 Submit a listing <ArrowRight size={16} />

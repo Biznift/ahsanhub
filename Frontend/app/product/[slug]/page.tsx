@@ -73,7 +73,7 @@ export default async function ProductPage({ params }: Props) {
           <ListingLogo src={listing.logo} name={listing.name} size={88} className="shadow-[0_1px_0_var(--line)]" />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-[32px] font-semibold leading-tight tracking-[-0.03em] text-ink sm:text-[40px]">{listing.name}</h1>
+              <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.03em] break-words text-ink sm:text-[40px]">{listing.name}</h1>
               {listing.featured && <span className="inline-flex h-6 items-center rounded-md bg-ink px-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-bg">Featured</span>}
             </div>
             <p className="mt-2 max-w-[60ch] text-[17px] leading-relaxed text-muted">{listing.overview}</p>
@@ -101,7 +101,7 @@ export default async function ProductPage({ params }: Props) {
         </header>
       </Container>
 
-      <Container className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <Container className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0">
           {listing.banner && (
             // eslint-disable-next-line @next/next/no-img-element
@@ -216,9 +216,9 @@ export default async function ProductPage({ params }: Props) {
           <div className="rounded-2xl border border-line bg-surface">
             <dl className="divide-y divide-line">
               {facts.map((fact) => (
-                <div key={fact.label} className="flex items-baseline justify-between gap-4 px-5 py-3 text-[14px]">
-                  <dt className="text-muted">{fact.label}</dt>
-                  <dd className="text-right text-ink">{fact.value}</dd>
+                <div key={fact.label} className="flex items-start justify-between gap-4 px-4 py-3 text-[14px] sm:px-5">
+                  <dt className="shrink-0 text-muted">{fact.label}</dt>
+                  <dd className="min-w-0 text-right break-words text-ink">{fact.value}</dd>
                 </div>
               ))}
             </dl>
