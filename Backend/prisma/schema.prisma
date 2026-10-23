@@ -30,6 +30,18 @@ enum Pricing {
   open_source
 }
 
+enum ListingKind {
+  software
+  service
+  ecommerce
+}
+
+enum CategoryStatus {
+  pending
+  approved
+  rejected
+}
+
 enum ReviewStatus {
   pending
   approved
@@ -59,13 +71,18 @@ model User {
 
 model Category {
   id          String            @id @default(cuid())
-  name        String            @unique
+  name        String
   slug        String            @unique
   description String            @default("")
   hidden      Boolean           @default(false)
   sortOrder   Int               @default(0)
+  kind        ListingKind       @default(software)
+  status      CategoryStatus    @default(approved)
   createdAt   DateTime          @default(now())
   listings    ListingCategory[]
+
+  @@unique([kind, name])
+  @@index([kind, status])
 }
 
 model Listing {
@@ -88,6 +105,7 @@ model Listing {
   sponsored    Boolean           @default(false)
   halalVerified Boolean          @default(false)
   voteCount    Int               @default(0)
+  kind         ListingKind       @default(software)
   ownerId      String?
   owner        User?             @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   categories   ListingCategory[]
@@ -100,6 +118,7 @@ model Listing {
 
   @@index([status, createdAt])
   @@index([status, voteCount])
+  @@index([status, kind])
 }
 
 model ListingCategory {

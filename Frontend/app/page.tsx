@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Search } from "lucide-react";
 import { getCategories, getListings } from "@/lib/api";
+import { KIND_LABEL, LISTING_KINDS } from "@/lib/format";
 import { Container, SectionHeader } from "@/components/section";
 import { ProductCard, ProductRow } from "@/components/product-card";
 import { AdSlot } from "@/components/ad-slot";
@@ -42,6 +43,13 @@ export default async function HomePage() {
                 Search
               </button>
             </form>
+            <div className="mt-5 flex flex-wrap gap-2">
+              {LISTING_KINDS.map((kind) => (
+                <Link key={kind} href={`/explore?kind=${kind}`} className="inline-flex h-10 items-center rounded-xl border border-line bg-surface px-4 text-[14px] font-semibold text-ink transition hover:border-brand">
+                  {KIND_LABEL[kind]}
+                </Link>
+              ))}
+            </div>
             <div className="mt-5 flex flex-wrap items-center gap-2">
               {popular.slice(0, 5).map((category) => (
                 <Link key={category.slug} href={`/category/${category.slug}`} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line px-3 text-[13px] font-medium text-ink-soft transition hover:border-line-strong hover:text-ink">

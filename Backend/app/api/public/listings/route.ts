@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { HttpError, limitClient, ok, rateLimit, route } from "@/lib/http";
 import { currentUser, hashPassword, passwordMatches, startSession } from "@/lib/auth";
 import { PRICING, cardInclude, parseListingForm, prepareListing, ratingsFor, revalidate, toCard, writeRelations } from "@/lib/directory";
+import { LISTING_KINDS } from "@/lib/kinds";
 import { uniqueSlug } from "@/lib/slug";
 import { recordActivity, sendVerification } from "@/lib/activity";
 import { alert } from "@/lib/telegram";
@@ -11,6 +12,7 @@ import { alert } from "@/lib/telegram";
 const querySchema = z.object({
   q: z.string().trim().max(80).optional(),
   category: z.string().max(80).optional(),
+  kind: z.enum(LISTING_KINDS).optional(),
   pricing: z.enum(PRICING).optional(),
   sort: z.enum(["new", "top", "featured"]).default("new"),
   featured: z.enum(["1"]).optional(),
@@ -28,7 +30,8 @@ export const GET = route(async (request) => {
       { overview: { contains: query.q, mode: "insensitive" } },
     ];
   }
-  if (query.category) where.categories = { some: { category: { slug: query.category, hidden: false } } };
+  if (query.kind) where.kind = query.kind;
+  if (query.category) where.categories = { some: { category: { slug: query.category, hidden: false, status: "approved" } } };
   if (query.pricing) where.pricing = query.pricing;
   if (query.featured || query.sort === "featured") where.featured = true;
 

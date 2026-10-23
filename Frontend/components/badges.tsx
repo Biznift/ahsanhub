@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { BadgeCheck } from "lucide-react";
-import { PRICING_LABEL, cn } from "@/lib/format";
-import type { CategoryRef, Pricing } from "@/lib/types";
+import { KIND_LABEL, PRICING_LABEL, cn } from "@/lib/format";
+import type { CategoryRef, ListingKind, Pricing } from "@/lib/types";
+
+export function KindBadge({ kind, className }: { kind?: ListingKind | null; className?: string }) {
+  if (!kind || !(kind in KIND_LABEL)) return null;
+  return <span className={cn("inline-flex h-6 items-center rounded-md bg-ink px-2 text-[12px] font-medium text-bg", className)}>{KIND_LABEL[kind]}</span>;
+}
 
 export function PricingBadge({ pricing, className }: { pricing: Pricing; className?: string }) {
   return (

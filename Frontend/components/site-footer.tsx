@@ -18,7 +18,7 @@ export function SiteFooter({ site, categories }: { site: Site; categories: Categ
             <SocialLinks socials={site.socials} size="sm" owner={site.name} />
           </div>
         </div>
-        <FooterColumn title="Discover" links={[["/explore", "All products"], ["/explore?sort=top", "Top rated"], ["/explore?sort=new", "Newest"], ["/blog", "Blog"], ["/categories", "Categories"]]} />
+        <FooterColumn title="Discover" links={[["/explore", "All listings"], ["/explore?kind=software", "Software / SaaS"], ["/explore?kind=service", "Services"], ["/explore?kind=ecommerce", "E-commerce"], ["/categories", "Categories"], ["/blog", "Blog"]]} />
         <FooterColumn title="Popular categories" links={top.map((category) => [`/category/${category.slug}`, category.name])} />
         <FooterColumn title="For makers" links={[["/submit", "Submit a product"], ["/account", "My listings"], ["/login", "Sign in"], ["/contact", "Contact"]]} />
       </div>

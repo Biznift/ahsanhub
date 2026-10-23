@@ -5,6 +5,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { Button, Field, SelectInput, TextInput, cn, controlClass } from "@/components/ui";
 import { RichText } from "@/components/rich-text";
 import { Card, useApi } from "@/components/admin-kit";
+import { KIND_LABEL, LISTING_KINDS, type ListingKind } from "@/lib/kinds";
 
 export const SOCIALS = [
   { key: "x", label: "X (Twitter)" },
@@ -32,6 +33,7 @@ export type EditableListing = {
   halalNote: string;
   socials: Record<string, string>;
   contactEmail: string;
+  kind: ListingKind;
   categoryIds: string[];
   founders: { id: string; name: string; role: string; bio: string; photo: string | null; socials: Record<string, string> }[];
 };
@@ -39,8 +41,8 @@ export type EditableListing = {
 type FounderDraft = { id?: string; name: string; role: string; bio: string; photo: string | null; socials: Record<string, string>; file: File | null; removePhoto: boolean };
 
 export function ListingEditor({ listing, onSave }: { listing: EditableListing; onSave: (form: FormData) => Promise<void> }) {
-  const categories = useApi<{ items: { id: string; name: string; hidden: boolean }[] }>("/api/admin/categories");
-  const [draft, setDraft] = useState({ ...listing });
+  const categories = useApi<{ items: { id: string; name: string; hidden: boolean; kind: ListingKind; status: "pending" | "approved" | "rejected" }[] }>("/api/admin/categories");
+  const [draft, setDraft] = useState({ ...listing, kind: listing.kind ?? "software" });
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [removeBanner, setRemoveBanner] = useState(false);
@@ -65,6 +67,7 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
         description: draft.description,
         website: draft.website,
         pricing: draft.pricing,
+        kind: draft.kind,
         categoryIds: draft.categoryIds,
         country: draft.country,
         platforms: draft.platforms,
@@ -104,6 +107,22 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
               <TextInput value={draft.overview} maxLength={180} onChange={(event) => set({ overview: event.target.value })} required />
             </Field>
           </div>
+          <Field label="Type">
+            <SelectInput
+              value={draft.kind}
+              onChange={(event) => {
+                const nextKind = event.target.value as ListingKind;
+                const allowed = new Set((categories.data?.items ?? []).filter((category) => category.kind === nextKind).map((category) => category.id));
+                set({ kind: nextKind, categoryIds: draft.categoryIds.filter((id) => allowed.has(id)) });
+              }}
+            >
+              {LISTING_KINDS.map((value) => (
+                <option key={value} value={value}>
+                  {KIND_LABEL[value]}
+                </option>
+              ))}
+            </SelectInput>
+          </Field>
           <Field label="Pricing">
             <SelectInput value={draft.pricing} onChange={(event) => set({ pricing: event.target.value })}>
               <option value="free">Free</option>
@@ -136,7 +155,9 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
         </div>
         <p className="mb-1.5 mt-4 text-sm font-semibold text-[#344054]">Categories (up to 5)</p>
         <div className="flex flex-wrap gap-2">
-          {categories.data?.items.map((category) => {
+          {categories.data?.items
+            .filter((category) => category.kind === draft.kind && category.status !== "rejected")
+            .map((category) => {
             const on = draft.categoryIds.includes(category.id);
             return (
               <Chip
@@ -147,6 +168,7 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
                 }
               >
                 {category.name}
+                {category.status === "pending" ? " (pending)" : ""}
                 {category.hidden ? " (hidden)" : ""}
               </Chip>
             );

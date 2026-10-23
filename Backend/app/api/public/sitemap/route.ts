@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export const GET = route(async () => {
   const [listings, categories, posts] = await Promise.all([
     db.listing.findMany({ where: { status: "published" }, select: { slug: true, updatedAt: true }, orderBy: { publishedAt: "desc" } }),
-    db.category.findMany({ where: { hidden: false }, select: { slug: true } }),
+    db.category.findMany({ where: { hidden: false, status: "approved" }, select: { slug: true } }),
     db.post.findMany({ where: { status: "published" }, select: { slug: true, kind: true, updatedAt: true } }),
   ]);
   return ok({

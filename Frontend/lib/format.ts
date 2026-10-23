@@ -1,6 +1,19 @@
-import type { Pricing } from "@/lib/types";
+import type { ListingKind, Pricing } from "@/lib/types";
 
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
+
+export const KIND_LABEL: Record<ListingKind, string> = {
+  software: "Software / SaaS",
+  service: "Service",
+  ecommerce: "E-commerce",
+};
+
+export const LISTING_KINDS = Object.keys(KIND_LABEL) as ListingKind[];
+
+/** Listings and categories created before types existed are software. */
+export function categoryKind(category: { kind?: ListingKind | null }): ListingKind {
+  return category.kind && category.kind in KIND_LABEL ? category.kind : "software";
+}
 
 export const PRICING_LABEL: Record<Pricing, string> = {
   free: "Free",

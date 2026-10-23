@@ -3,11 +3,11 @@ import { ok, route } from "@/lib/http";
 
 export const GET = route(async () => {
   const rows = await db.category.findMany({
-    where: { hidden: false },
+    where: { hidden: false, status: "approved" },
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     include: { _count: { select: { listings: { where: { listing: { status: "published" } } } } } },
   });
   return ok({
-    items: rows.map((row) => ({ id: row.id, name: row.name, slug: row.slug, description: row.description, count: row._count.listings })),
+    items: rows.map((row) => ({ id: row.id, name: row.name, slug: row.slug, description: row.description, kind: row.kind, count: row._count.listings })),
   });
 });

@@ -1,10 +1,17 @@
 import Link from "next/link";
 import { Search, X } from "lucide-react";
 import type { Category, ListingCard, Page } from "@/lib/types";
-import { PRICING_LABEL, cn } from "@/lib/format";
+import { KIND_LABEL, LISTING_KINDS, PRICING_LABEL, categoryKind, cn } from "@/lib/format";
+import type { ListingKind } from "@/lib/types";
 import { ProductCard } from "@/components/product-card";
 
-export type BrowseParams = { q?: string; category?: string; pricing?: string; sort?: string; page?: string };
+export type BrowseParams = { q?: string; category?: string; kind?: string; pricing?: string; sort?: string; page?: string };
+
+const KIND_NOUN: Record<ListingKind, [string, string]> = {
+  software: ["product", "products"],
+  service: ["service", "services"],
+  ecommerce: ["shop", "shops"],
+};
 
 const SORTS = [
   { value: "new", label: "Newest" },
@@ -53,7 +60,8 @@ export function ListingBrowser({
           <label htmlFor="browse-q" className="sr-only">
             Search
           </label>
-          <input id="browse-q" name="q" defaultValue={params.q} placeholder="Search products" className="h-10 min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-muted" />
+          <input id="browse-q" name="q" defaultValue={params.q} placeholder="Search listings" className="h-10 min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-muted" />
+          {params.kind && <input type="hidden" name="kind" value={params.kind} />}
           {params.category && !lockCategory && <input type="hidden" name="category" value={params.category} />}
           {params.pricing && <input type="hidden" name="pricing" value={params.pricing} />}
           {params.sort && <input type="hidden" name="sort" value={params.sort} />}
@@ -70,24 +78,53 @@ export function ListingBrowser({
           ))}
         </FilterGroup>
 
-        {!lockCategory && (
-          <FilterGroup title="Category">
-            <FilterLink href={hrefFor(base, params, { category: undefined })} active={!params.category}>
-              All categories
-            </FilterLink>
-            {categories.map((category) => (
-              <FilterLink key={category.slug} href={hrefFor(base, params, { category: category.slug })} active={params.category === category.slug} count={category.count}>
-                {category.name}
+        {!lockCategory &&
+          (params.kind ? (
+            <FilterGroup title="Category">
+              <FilterLink href={hrefFor(base, params, { category: undefined })} active={!params.category}>
+                All categories
               </FilterLink>
-            ))}
-          </FilterGroup>
-        )}
+              {categories
+                .filter((category) => categoryKind(category) === params.kind)
+                .map((category) => (
+                  <FilterLink key={category.slug} href={hrefFor(base, params, { category: category.slug })} active={params.category === category.slug} count={category.count}>
+                    {category.name}
+                  </FilterLink>
+                ))}
+            </FilterGroup>
+          ) : (
+            LISTING_KINDS.map((kind) => {
+              const group = categories.filter((category) => categoryKind(category) === kind);
+              if (group.length === 0) return null;
+              return (
+                <FilterGroup key={kind} title={KIND_LABEL[kind]}>
+                  {group.map((category) => (
+                    <FilterLink key={category.slug} href={hrefFor(base, params, { kind, category: category.slug })} active={params.category === category.slug} count={category.count}>
+                      {category.name}
+                    </FilterLink>
+                  ))}
+                </FilterGroup>
+              );
+            })
+          ))}
       </aside>
 
       <div className="min-w-0">
+        {!lockCategory && (
+          <div className="mb-5 flex flex-wrap gap-2" role="tablist" aria-label="Listing type">
+            <KindTab href={hrefFor(base, params, { kind: undefined, category: undefined })} active={!params.kind}>
+              All
+            </KindTab>
+            {LISTING_KINDS.map((kind) => (
+              <KindTab key={kind} href={hrefFor(base, params, { kind, category: undefined })} active={params.kind === kind}>
+                {KIND_LABEL[kind]}
+              </KindTab>
+            ))}
+          </div>
+        )}
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <p className="text-[14px] text-muted">
-            <span className="font-semibold tabular-nums text-ink">{results.total}</span> {results.total === 1 ? "product" : "products"}
+            <span className="font-semibold tabular-nums text-ink">{results.total}</span> {countLabel(results.total, params.kind)}
             {params.q && (
               <>
                 {" "}
@@ -95,7 +132,7 @@ export function ListingBrowser({
               </>
             )}
             {filtered && (
-              <Link href={base} className="ml-3 inline-flex items-center gap-1 font-medium text-brand-text">
+              <Link href={hrefFor(base, { kind: params.kind }, {})} className="ml-3 inline-flex items-center gap-1 font-medium text-brand-text">
                 <X size={13} /> Clear filters
               </Link>
             )}
@@ -117,10 +154,10 @@ export function ListingBrowser({
 
         {results.items.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-line-strong px-6 py-16 text-center">
-            <p className="text-[16px] font-semibold text-ink">No products match yet</p>
+            <p className="text-[16px] font-semibold text-ink">Nothing matches yet</p>
             <p className="mt-1 text-[14px] text-muted">Try another search, or be the first to list one here.</p>
             <Link href="/submit" className="mt-5 inline-flex h-10 items-center rounded-lg bg-brand px-4 text-[14px] font-semibold text-white hover:bg-brand-hover">
-              Submit a product
+              Submit a listing
             </Link>
           </div>
         ) : (
@@ -134,6 +171,19 @@ export function ListingBrowser({
         {results.pages > 1 && <Pagination base={base} params={params} page={results.page} pages={results.pages} />}
       </div>
     </div>
+  );
+}
+
+function countLabel(total: number, kind: string | undefined) {
+  if (kind === "software" || kind === "service" || kind === "ecommerce") return KIND_NOUN[kind][total === 1 ? 0 : 1];
+  return total === 1 ? "listing" : "listings";
+}
+
+function KindTab({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
+  return (
+    <Link href={href} role="tab" aria-selected={active} className={cn("inline-flex h-9 items-center rounded-lg border px-3 text-[13px] font-semibold transition", active ? "border-ink bg-ink text-bg" : "border-line bg-surface text-ink-soft hover:border-line-strong hover:text-ink")}>
+      {children}
+    </Link>
   );
 }
 

@@ -1,8 +1,11 @@
 import { z } from "zod";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { HttpError } from "@/lib/http";
+import { LISTING_KINDS, type ListingKind } from "@/lib/kinds";
 import { cleanDescription, plainText } from "@/lib/sanitize";
+import { uniqueSlug } from "@/lib/slug";
+import { alert } from "@/lib/telegram";
 import { RULES, fileField, removeUpload, saveUpload } from "@/lib/upload";
 
 export const SOCIAL_KEYS = ["x", "linkedin", "facebook", "instagram", "youtube", "github", "tiktok", "whatsapp"] as const;
@@ -92,20 +95,32 @@ const founderSchema = z.object({
   removePhoto: z.boolean().optional(),
 });
 
-export const listingSchema = z.object({
-  name: z.string().trim().min(2, "Company name is too short").max(80),
-  overview: z.string().trim().min(10, "Write at least a sentence").max(180, "Keep the overview under 180 characters"),
-  description: z.string().max(60000),
-  website: z.string().trim().min(4, "Website is required"),
-  pricing: z.enum(PRICING),
-  categoryIds: z.array(z.string()).min(1, "Pick at least one category").max(5, "Pick up to 5 categories"),
-  country: z.string().trim().max(60).default(""),
-  platforms: z.array(z.enum(PLATFORMS)).default([]),
-  halalNote: z.string().trim().max(300).default(""),
-  socials: socialsSchema,
-  founders: z.array(founderSchema).max(5, "Up to 5 founders").default([]),
-  removeBanner: z.boolean().optional(),
-});
+export const listingSchema = z
+  .object({
+    name: z.string().trim().min(2, "Company name is too short").max(80),
+    overview: z.string().trim().min(10, "Write at least a sentence").max(180, "Keep the overview under 180 characters"),
+    description: z.string().max(60000),
+    website: z.string().trim().min(4, "Website is required"),
+    pricing: z.enum(PRICING),
+    kind: z.enum(LISTING_KINDS).default("software"),
+    categoryIds: z.array(z.string()).max(5).default([]),
+    proposedCategories: z.array(z.string().trim().min(2, "Category name is too short").max(60)).max(5).default([]),
+    country: z.string().trim().max(60).default(""),
+    platforms: z.array(z.enum(PLATFORMS)).default([]),
+    halalNote: z.string().trim().max(300).default(""),
+    socials: socialsSchema,
+    founders: z.array(founderSchema).max(5, "Up to 5 founders").default([]),
+    removeBanner: z.boolean().optional(),
+  })
+  .superRefine((value, ctx) => {
+    const names = new Set(value.proposedCategories.map((name) => name.toLowerCase()));
+    if (names.size !== value.proposedCategories.length) {
+      ctx.addIssue({ code: "custom", message: "Each new category can be added once.", path: ["proposedCategories"] });
+    }
+    const total = value.categoryIds.length + value.proposedCategories.length;
+    if (total < 1) ctx.addIssue({ code: "custom", message: "Pick at least one category.", path: ["categoryIds"] });
+    if (total > 5) ctx.addIssue({ code: "custom", message: "Pick up to 5 categories.", path: ["categoryIds"] });
+  });
 
 export type ListingInput = z.infer<typeof listingSchema>;
 
@@ -123,6 +138,54 @@ export function parseListingForm(form: FormData) {
 
 type Existing = Prisma.ListingGetPayload<{ include: { founders: true } }>;
 
+/** Approved categories for this listing type, plus a pending category this listing already uses. New names become pending until an admin approves them. */
+async function resolveCategoryIds(kind: ListingKind, categoryIds: string[], proposed: string[], listingId: string | null) {
+  const uniqueIds = [...new Set(categoryIds)];
+  const selected = uniqueIds.length ? await db.category.findMany({ where: { id: { in: uniqueIds } } }) : [];
+  if (selected.length !== uniqueIds.length) throw new HttpError(400, "One of the categories no longer exists.");
+
+  const attached = listingId
+    ? new Set((await db.listingCategory.findMany({ where: { listingId }, select: { categoryId: true } })).map((row) => row.categoryId))
+    : new Set<string>();
+
+  const resolved: string[] = [];
+  for (const category of selected) {
+    if (category.kind !== kind) throw new HttpError(400, "Categories have to match the listing type.");
+    const approved = category.status === "approved" && !category.hidden;
+    const ownPending = category.status === "pending" && attached.has(category.id);
+    if (!approved && !ownPending) throw new HttpError(400, "One of the categories is not available.");
+    resolved.push(category.id);
+  }
+
+  const createdNames: string[] = [];
+  for (const name of proposed) {
+    const existing = await db.category.findFirst({ where: { kind, name: { equals: name, mode: "insensitive" } } });
+    if (existing?.status === "rejected" || (existing?.status === "approved" && existing.hidden)) {
+      throw new HttpError(400, `"${name}" is not available. Choose another category or suggest a different name.`);
+    }
+    if (existing) {
+      if (!resolved.includes(existing.id)) resolved.push(existing.id);
+      continue;
+    }
+    const slug = await uniqueSlug(name, async (candidate) => (await db.category.count({ where: { slug: candidate } })) > 0);
+    try {
+      const row = await db.category.create({ data: { name, slug, kind, status: "pending", description: "" } });
+      resolved.push(row.id);
+      createdNames.push(name);
+    } catch (error) {
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
+      const again = await db.category.findFirst({ where: { kind, name: { equals: name, mode: "insensitive" } } });
+      if (!again || again.status === "rejected") throw new HttpError(400, `"${name}" is not available. Suggest a different name.`);
+      if (!resolved.includes(again.id)) resolved.push(again.id);
+    }
+  }
+
+  const ids = [...new Set(resolved)];
+  if (ids.length < 1 || ids.length > 5) throw new HttpError(400, "Pick between 1 and 5 categories.");
+  if (createdNames.length) alert("listing.submitted", `New ${createdNames.length === 1 ? "category" : "categories"} waiting for approval: ${createdNames.join(", ")}.`);
+  return ids;
+}
+
 /**
  * Validates the form, stores uploads, and returns the Prisma data for the listing columns.
  * Founders and categories are written by `writeRelations` after the listing row exists.
@@ -132,11 +195,9 @@ export async function prepareListing(form: FormData, input: ListingInput, existi
   const textLength = plainText(description).length;
   if (textLength < 80) throw new HttpError(400, "Description needs at least 80 characters of text.");
 
-  const categories = await db.category.findMany({ where: { id: { in: input.categoryIds }, hidden: false }, select: { id: true } });
-  if (categories.length !== new Set(input.categoryIds).size) throw new HttpError(400, "One of the categories no longer exists.");
-
   const logoFile = fileField(form, "logo");
   if (!logoFile && !existing?.logo) throw new HttpError(400, "Upload a logo.");
+  const categoryIds = await resolveCategoryIds(input.kind, input.categoryIds, input.proposedCategories, existing?.id ?? null);
   const bannerFile = fileField(form, "banner");
 
   const logo = logoFile ? (await saveUpload(logoFile, RULES.logo, "logos")).path : existing!.logo;
@@ -168,6 +229,7 @@ export async function prepareListing(form: FormData, input: ListingInput, existi
       platforms: input.platforms,
       halalNote: input.halalNote,
       socials: normalizeSocials(input.socials),
+      kind: input.kind,
     },
     founders: input.founders.map((founder, index) => ({
       name: founder.name,
@@ -177,7 +239,7 @@ export async function prepareListing(form: FormData, input: ListingInput, existi
       socials: normalizeSocials(founder.socials),
       sortOrder: index,
     })),
-    categoryIds: [...new Set(input.categoryIds)],
+    categoryIds,
     stale: stale as string[],
   };
 }
@@ -193,7 +255,7 @@ export async function writeRelations(listingId: string, prepared: Awaited<Return
 }
 
 export const cardInclude = {
-  categories: { include: { category: { select: { name: true, slug: true, hidden: true } } } },
+  categories: { include: { category: { select: { name: true, slug: true, hidden: true, status: true } } } },
 } satisfies Prisma.ListingInclude;
 
 type CardRow = Prisma.ListingGetPayload<{ include: typeof cardInclude }>;
@@ -211,9 +273,14 @@ export function toCard(row: CardRow, options?: { includeHidden?: boolean }) {
     sponsored: row.sponsored,
     halalVerified: row.halalVerified,
     voteCount: row.voteCount,
+    kind: row.kind,
     categories: row.categories
-      .filter((item) => includeHidden || !item.category.hidden)
-      .map((item) => ({ name: item.category.name, slug: item.category.slug })),
+      .filter((item) => item.category.status !== "rejected" && (includeHidden || (!item.category.hidden && item.category.status === "approved")))
+      .map((item) => ({
+        name: item.category.name,
+        slug: item.category.slug,
+        status: item.category.status === "pending" ? ("pending" as const) : ("approved" as const),
+      })),
     publishedAt: row.publishedAt?.toISOString() ?? null,
   };
 }
@@ -254,7 +321,7 @@ export function toEditable(row: DetailRow) {
     status: row.status,
     contactEmail: row.contactEmail,
     ownerId: row.ownerId,
-    categoryIds: row.categories.map((item) => item.categoryId),
+    categoryIds: row.categories.filter((item) => item.category.status !== "rejected").map((item) => item.categoryId),
     createdAt: row.createdAt.toISOString(),
   };
 }

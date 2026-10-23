@@ -5,7 +5,7 @@ import { Container } from "@/components/section";
 import { PageHeader } from "@/components/page-header";
 import { ListingBrowser, type BrowseParams } from "@/components/listing-browser";
 import { JsonLd } from "@/components/json-ld";
-import { SITE_URL } from "@/lib/format";
+import { KIND_LABEL, SITE_URL, categoryKind } from "@/lib/format";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<BrowseParams> };
 
@@ -40,7 +40,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   return (
     <>
       <PageHeader
-        crumbs={[{ href: "/", label: "Home" }, { href: "/categories", label: "Categories" }, { label: category.name }]}
+        crumbs={[{ href: "/", label: "Home" }, { href: "/categories", label: "Categories" }, { href: `/explore?kind=${categoryKind(category)}`, label: KIND_LABEL[categoryKind(category)] }, { label: category.name }]}
         title={`Best ${category.name} tools`}
         description={category.description || `Halal ${category.name.toLowerCase()} software and services, reviewed by the Ahsan Hub team and ranked by the community.`}
       />
@@ -55,7 +55,8 @@ export default async function CategoryPage({ params, searchParams }: Props) {
             itemListElement: [
               { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
               { "@type": "ListItem", position: 2, name: "Categories", item: `${SITE_URL}/categories` },
-              { "@type": "ListItem", position: 3, name: category.name, item: `${SITE_URL}/category/${slug}` },
+              { "@type": "ListItem", position: 3, name: KIND_LABEL[categoryKind(category)], item: `${SITE_URL}/explore?kind=${categoryKind(category)}` },
+              { "@type": "ListItem", position: 4, name: category.name, item: `${SITE_URL}/category/${slug}` },
             ],
           },
           {

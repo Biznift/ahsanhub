@@ -9,6 +9,7 @@ import { ModuleFrame } from "@/components/frame";
 import { useStore } from "@/components/store";
 import { Button, TextInput, cn } from "@/components/ui";
 import { ConfirmDialog, Empty, StatusPill, Switch, Thumb, api, formatDate, useApi } from "@/components/admin-kit";
+import { KIND_LABEL, type ListingKind } from "@/lib/kinds";
 
 type AdminListingRow = {
   id: string;
@@ -25,6 +26,7 @@ type AdminListingRow = {
   website: string;
   contactEmail: string;
   ownerEmail: string | null;
+  kind: ListingKind;
   categories: { name: string; slug: string }[];
   createdAt: string;
 };
@@ -150,7 +152,7 @@ function ListingsScreen() {
                           </Link>
                           <p className="max-w-[320px] truncate text-xs text-[#667085]">{row.categories.map((item) => item.name).join(", ")}</p>
                           <p className="text-xs text-[#98a2b3]">
-                            {formatDate(row.createdAt)} · {row.pricing.replace("_", " ")} · {row.voteCount} votes
+                            {KIND_LABEL[row.kind]} · {formatDate(row.createdAt)} · {row.pricing.replace("_", " ")} · {row.voteCount} votes
                           </p>
                         </div>
                       </div>

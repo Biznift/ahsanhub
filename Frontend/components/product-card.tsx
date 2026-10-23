@@ -3,7 +3,7 @@ import { Star } from "lucide-react";
 import type { ListingCard } from "@/lib/types";
 import { ListingLogo } from "@/components/listing-logo";
 import { UpvoteButton } from "@/components/upvote-button";
-import { CategoryChip, HalalBadge, PricingBadge, SponsoredBadge } from "@/components/badges";
+import { CategoryChip, HalalBadge, KindBadge, PricingBadge, SponsoredBadge } from "@/components/badges";
 import { cn } from "@/lib/format";
 
 /** Grid card. The whole card links to the product; chips and the vote button sit above the link. */
@@ -33,6 +33,7 @@ export function ProductCard({ listing, showSponsored = false }: { listing: Listi
       </div>
       <p className="mt-4 line-clamp-2 text-[14px] leading-[1.55] text-muted">{listing.overview}</p>
       <div className="relative z-10 mt-auto flex flex-wrap items-center gap-1.5 pt-4">
+        <KindBadge kind={listing.kind} />
         <PricingBadge pricing={listing.pricing} />
         {listing.categories.slice(0, 2).map((category) => (
           <CategoryChip key={category.slug} category={category} />
@@ -57,6 +58,7 @@ export function ProductRow({ listing, rank, compact = false, className }: { list
         </h3>
         <p className={cn("mt-0.5 text-muted", compact ? "line-clamp-2 text-[13px] leading-snug" : "truncate text-[14px]")}>{listing.overview}</p>
         <div className={cn("relative z-10 mt-1.5 flex-wrap items-center gap-1.5", compact ? "hidden" : "hidden sm:flex")}>
+          <KindBadge kind={listing.kind} className="h-5 text-[11px]" />
           <PricingBadge pricing={listing.pricing} className="h-5 text-[11px]" />
           {listing.categories.slice(0, 2).map((category) => (
             <CategoryChip key={category.slug} category={category} />

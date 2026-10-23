@@ -7,25 +7,32 @@ const db = new PrismaClient();
 const STORAGE_DIR = path.resolve(process.env.STORAGE_DIR ?? path.join(process.cwd(), "storage"));
 export const DEMO_EMAIL = "demo@ahsanhub.com";
 
-const CATEGORIES = [
-  "Productivity",
-  "Marketing",
-  "Finance and Bookkeeping",
-  "E-commerce",
-  "Education",
-  "Health",
-  "Communication",
-  "Developer Tools",
-  "Design",
-  "Analytics",
-  "HR and Hiring",
-  "Customer Support",
-  "No-code",
-  "Security",
-  "Content",
-  "Islamic Finance",
-  "Halal Food and Lifestyle",
-  "Community",
+const CATEGORY_GROUPS = [
+  {
+    kind: "software" as const,
+    names: [
+      "Productivity",
+      "Marketing",
+      "Finance and Bookkeeping",
+      "E-commerce",
+      "Education",
+      "Health",
+      "Communication",
+      "Developer Tools",
+      "Design",
+      "Analytics",
+      "HR and Hiring",
+      "Customer Support",
+      "No-code",
+      "Security",
+      "Content",
+      "Islamic Finance",
+      "Halal Food and Lifestyle",
+      "Community",
+    ],
+  },
+  { kind: "service" as const, names: ["Consulting", "Tutoring", "Translation", "Web development", "Accounting", "Marketing services", "Design services"] },
+  { kind: "ecommerce" as const, names: ["Islamic books", "Modest fashion", "Halal groceries", "Home and living", "Gifts", "Health and wellness"] },
 ];
 
 function slugify(text: string) {
@@ -99,10 +106,16 @@ async function main() {
   }
   console.log(`Admin: ${email}`);
 
-  for (const [index, name] of CATEGORIES.entries()) {
-    await db.category.upsert({ where: { slug: slugify(name) }, update: {}, create: { name, slug: slugify(name), sortOrder: index } });
+  for (const group of CATEGORY_GROUPS) {
+    for (const [index, name] of group.names.entries()) {
+      await db.category.upsert({
+        where: { slug: slugify(name) },
+        update: {},
+        create: { name, slug: slugify(name), sortOrder: index, kind: group.kind, status: "approved" },
+      });
+    }
   }
-  console.log(`Categories: ${CATEGORIES.length}`);
+  console.log(`Categories: ${CATEGORY_GROUPS.reduce((sum, group) => sum + group.names.length, 0)}`);
 
   if (!process.argv.includes("--demo")) return;
   const categories = new Map((await db.category.findMany()).map((row) => [row.name, row.id]));

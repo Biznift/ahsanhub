@@ -5,8 +5,8 @@ import { PageHeader } from "@/components/page-header";
 import { SubmitForm } from "@/components/submit-form";
 
 export const metadata: Metadata = {
-  title: "Submit your product",
-  description: "List your halal software, SaaS or business on Ahsan Hub for free. Add your company, founders and links, and we review it by hand.",
+  title: "Submit a listing",
+  description: "List halal software, a service, or an online shop on Ahsan Hub for free. Pick your categories, or suggest a new one for review.",
   alternates: { canonical: "/submit" },
 };
 
@@ -16,8 +16,8 @@ export default async function SubmitPage() {
     <>
       <PageHeader
         crumbs={[{ href: "/", label: "Home" }, { label: "Submit" }]}
-        title="Submit your product"
-        description="Free to list. Fill in what you can, every field marked with a star is required. A person reviews each submission before it goes live."
+        title="Submit a listing"
+        description="Software, a service, or a shop. Categories are a dropdown and you can select more than one. If yours is missing, add it and an admin will approve it."
       />
       <Container className="py-10">
         <SubmitForm categories={categories} />

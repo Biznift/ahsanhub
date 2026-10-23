@@ -1,5 +1,5 @@
 import "server-only";
-import type { AdPlacementData, Category, ListingCard, ListingDetail, Page, PublicPost, Review, Site } from "@/lib/types";
+import type { AdPlacementData, Category, ListingCard, ListingDetail, ListingKind, Page, PublicPost, Review, Site } from "@/lib/types";
 
 const BACKEND = process.env.BACKEND_URL ?? "http://localhost:3020";
 
@@ -41,6 +41,7 @@ export async function getCategories() {
 export type ListingQuery = {
   q?: string;
   category?: string;
+  kind?: ListingKind;
   pricing?: string;
   sort?: "new" | "top" | "featured";
   featured?: boolean;

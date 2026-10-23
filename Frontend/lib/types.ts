@@ -1,9 +1,10 @@
 export type Pricing = "free" | "freemium" | "paid" | "open_source";
+export type ListingKind = "software" | "service" | "ecommerce";
 
 export type SocialKey = "x" | "linkedin" | "facebook" | "instagram" | "youtube" | "github" | "tiktok" | "whatsapp";
 export type Socials = Partial<Record<SocialKey, string>>;
 
-export type CategoryRef = { name: string; slug: string };
+export type CategoryRef = { name: string; slug: string; status?: "approved" | "pending" };
 
 export type Rating = { average: number; count: number } | null;
 
@@ -18,6 +19,7 @@ export type ListingCard = {
   sponsored: boolean;
   halalVerified: boolean;
   voteCount: number;
+  kind: ListingKind;
   categories: CategoryRef[];
   publishedAt: string | null;
   rating?: Rating;
@@ -45,7 +47,7 @@ export type EditableListing = Omit<ListingDetail, "related" | "rating"> & {
   categoryIds: string[];
 };
 
-export type Category = { id: string; name: string; slug: string; description: string; count: number };
+export type Category = { id: string; name: string; slug: string; description: string; count: number; kind: ListingKind; status?: "approved" | "pending" | "rejected" };
 
 export type Page<T> = { items: T[]; total: number; page: number; pages: number };
 

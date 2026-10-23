@@ -8,7 +8,7 @@ import { Container } from "@/components/section";
 import { Breadcrumbs } from "@/components/page-header";
 import { ListingLogo } from "@/components/listing-logo";
 import { UpvoteButton } from "@/components/upvote-button";
-import { CategoryChip, HalalBadge, PricingBadge } from "@/components/badges";
+import { CategoryChip, HalalBadge, KindBadge, PricingBadge } from "@/components/badges";
 import { SocialLinks } from "@/components/social-links";
 import { AdSlot } from "@/components/ad-slot";
 import { ProductRow } from "@/components/product-card";
@@ -78,6 +78,7 @@ export default async function ProductPage({ params }: Props) {
             </div>
             <p className="mt-2 max-w-[60ch] text-[17px] leading-relaxed text-muted">{listing.overview}</p>
             <div className="mt-4 flex flex-wrap items-center gap-2">
+              <KindBadge kind={listing.kind} />
               <PricingBadge pricing={listing.pricing} />
               {listing.halalVerified && <HalalBadge />}
               {listing.rating && listing.rating.count > 0 && (

@@ -40,7 +40,15 @@ export function EditListing({ id, categories }: { id: string; categories: Catego
 function categoriesWithHidden(categories: Category[], listing: EditableListing) {
   const known = new Set(categories.map((item) => item.id));
   const extra = listing.categories
-    .map((item, index) => ({ id: listing.categoryIds[index], name: item.name, slug: item.slug, description: "", count: 0 }))
+    .map((item, index) => ({
+      id: listing.categoryIds[index],
+      name: item.name,
+      slug: item.slug,
+      description: "",
+      count: 0,
+      kind: listing.kind,
+      status: item.status ?? "approved",
+    }))
     .filter((item) => item.id && !known.has(item.id));
   return [...categories, ...extra];
 }

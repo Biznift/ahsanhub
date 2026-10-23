@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState, type ReactNode } from "react";
 import { CircleAlert, Check, ImagePlus, Lock, Plus, Trash2, X } from "lucide-react";
-import type { Account, Category, EditableListing, Pricing, SocialKey, Socials } from "@/lib/types";
-import { PLATFORM_LABEL, PRICING_LABEL, cn } from "@/lib/format";
+import type { Account, Category, EditableListing, ListingKind, Pricing, SocialKey, Socials } from "@/lib/types";
+import { KIND_LABEL, LISTING_KINDS, PLATFORM_LABEL, PRICING_LABEL, categoryKind, cn } from "@/lib/format";
+import { CategoryPicker } from "@/components/category-picker";
 import { IMAGE_RULES, checkImage, type ImageRule } from "@/lib/image-check";
 import { RichTextEditor } from "@/components/rich-text-editor";
 import { BrandIcon, SOCIAL_KEYS, SOCIAL_LABEL } from "@/components/brand-icons";
@@ -16,7 +17,9 @@ type Draft = {
   website: string;
   overview: string;
   pricing: Pricing;
+  kind: ListingKind;
   categoryIds: string[];
+  proposedCategories: string[];
   country: string;
   platforms: string[];
   halalNote: string;
@@ -47,7 +50,9 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
     website: existing?.website ?? "",
     overview: existing?.overview ?? "",
     pricing: existing?.pricing ?? "freemium",
+    kind: existing?.kind ?? "software",
     categoryIds: existing?.categoryIds ?? [],
+    proposedCategories: [],
     country: existing?.country ?? "",
     platforms: existing?.platforms ?? ["web"],
     halalNote: existing?.halalNote ?? "",
@@ -84,7 +89,7 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
     event.preventDefault();
     setError(null);
     if (!editing && !logo) return fail("Upload a logo.", "media");
-    if (draft.categoryIds.length === 0) return fail("Pick at least one category.", "company");
+    if (draft.categoryIds.length + draft.proposedCategories.length === 0) return fail("Pick at least one category.", "company");
     if (textLength < 80) return fail("The description needs at least 80 characters.", "description");
 
     const form = new FormData();
@@ -166,6 +171,21 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
           <Field label="Overview" required hint={`${draft.overview.length}/180. One sentence on what it does and for whom.`}>
             <Input value={draft.overview} onChange={(overview) => set({ overview })} required minLength={10} maxLength={180} placeholder="Bookkeeping for small businesses that keeps interest out of the books." />
           </Field>
+          <Field label="What are you listing?" required hint="Software and SaaS, a service you provide, or an online shop. Categories below belong to this type.">
+            <div className="grid gap-2 sm:grid-cols-3">
+              {LISTING_KINDS.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => value !== draft.kind && set({ kind: value, categoryIds: [], proposedCategories: [] })}
+                  aria-pressed={draft.kind === value}
+                  className={cn("h-11 rounded-xl border px-3 text-[14px] font-medium transition", draft.kind === value ? "border-brand bg-brand-soft text-brand-text" : "border-line text-ink-soft hover:border-line-strong")}
+                >
+                  {KIND_LABEL[value]}
+                </button>
+              ))}
+            </div>
+          </Field>
           <Field label="Pricing" required>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {(Object.keys(PRICING_LABEL) as Pricing[]).map((value) => (
@@ -181,29 +201,13 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
               ))}
             </div>
           </Field>
-          <Field label="Categories" required hint={`${draft.categoryIds.length}/5 selected. Pick every category your product serves.`}>
-            <div className="flex flex-wrap gap-2">
-              {categories.map((category) => {
-                const on = draft.categoryIds.includes(category.id);
-                const full = !on && draft.categoryIds.length >= 5;
-                return (
-                  <button
-                    key={category.id}
-                    type="button"
-                    disabled={full}
-                    aria-pressed={on}
-                    onClick={() => set({ categoryIds: on ? draft.categoryIds.filter((id) => id !== category.id) : [...draft.categoryIds, category.id] })}
-                    className={cn(
-                      "inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-[13.5px] font-medium transition disabled:cursor-not-allowed disabled:opacity-40",
-                      on ? "border-brand bg-brand text-white" : "border-line text-ink-soft hover:border-line-strong hover:text-ink",
-                    )}
-                  >
-                    {on && <Check size={14} strokeWidth={2.6} />}
-                    {category.name}
-                  </button>
-                );
-              })}
-            </div>
+          <Field label="Categories" required hint={`${draft.categoryIds.length + draft.proposedCategories.length}/5 selected. Choose more than one if it fits. A category you add yourself stays pending until an admin approves it.`}>
+            <CategoryPicker
+              categories={categories.filter((category) => categoryKind(category) === draft.kind && category.status !== "rejected")}
+              categoryIds={draft.categoryIds}
+              proposed={draft.proposedCategories}
+              onChange={(next) => set(next)}
+            />
           </Field>
           <div className="grid gap-5 sm:grid-cols-2">
             <Field label="Based in" hint="Optional">

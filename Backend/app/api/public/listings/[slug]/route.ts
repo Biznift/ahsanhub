@@ -9,13 +9,15 @@ export const GET = route<Context>(async (_request, { params }) => {
   const row = await db.listing.findFirst({ where: { slug, status: "published" }, include: detailInclude });
   if (!row) throw new HttpError(404, "Listing not found.");
 
-  const categoryIds = row.categories.map((item) => item.categoryId);
-  const related = await db.listing.findMany({
-    where: { status: "published", id: { not: row.id }, categories: { some: { categoryId: { in: categoryIds } } } },
-    include: cardInclude,
-    orderBy: [{ voteCount: "desc" }, { publishedAt: "desc" }],
-    take: 4,
-  });
+  const categoryIds = row.categories.filter((item) => item.category.status === "approved" && !item.category.hidden).map((item) => item.categoryId);
+  const related = categoryIds.length
+    ? await db.listing.findMany({
+        where: { status: "published", id: { not: row.id }, categories: { some: { categoryId: { in: categoryIds } } } },
+        include: cardInclude,
+        orderBy: [{ voteCount: "desc" }, { publishedAt: "desc" }],
+        take: 4,
+      })
+    : [];
   const ratings = await ratingsFor([row.id]);
   return ok({
     ...toDetail(row, { includeHidden: false }),
