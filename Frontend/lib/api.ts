@@ -1,5 +1,5 @@
 import "server-only";
-import type { AdPlacementData, Category, ListingCard, ListingDetail, ListingKind, Page, PublicPost, Review, Site } from "@/lib/types";
+import type { AdPlacementData, Category, CouponDeal, ListingCard, ListingDetail, ListingKind, Page, PublicPost, Review, Site } from "@/lib/types";
 
 const BACKEND = process.env.BACKEND_URL ?? "http://localhost:3020";
 
@@ -69,6 +69,11 @@ export async function getListing(slug: string) {
 
 export async function getReviews(slug: string) {
   return (await read<{ items: Review[] }>(`/api/public/listings/${encodeURIComponent(slug)}/reviews`, [`listing:${slug}`], 300))?.items ?? [];
+}
+
+export async function getCouponDeals(limit = 100) {
+  const cap = Math.min(100, Math.max(1, limit));
+  return (await read<{ items: CouponDeal[] }>(`/api/public/coupon-codes?limit=${cap}`, ["coupon-codes"], 120))?.items ?? [];
 }
 
 export async function getAds(placement: string) {

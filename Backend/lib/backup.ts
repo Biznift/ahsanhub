@@ -24,6 +24,7 @@ const snapshotSchema = z.object({
   campaigns: z.array(z.record(z.string(), z.unknown())),
   mails: z.array(z.record(z.string(), z.unknown())),
   socialEvents: z.array(z.record(z.string(), z.unknown())),
+  couponDeals: z.array(z.record(z.string(), z.unknown())).optional().default([]),
 });
 
 function fileFor(id: string) {
@@ -49,6 +50,7 @@ export async function createBackup(automatic = false) {
     campaigns,
     mails,
     socialEvents,
+    couponDeals,
   ] = await Promise.all([
     db.user.findMany(),
     db.category.findMany(),
@@ -66,6 +68,7 @@ export async function createBackup(automatic = false) {
     db.campaign.findMany(),
     db.mail.findMany(),
     db.socialEvent.findMany(),
+    db.couponDeal.findMany(),
   ]);
   const body = JSON.stringify({
     createdAt: new Date().toISOString(),
@@ -85,6 +88,7 @@ export async function createBackup(automatic = false) {
     campaigns,
     mails,
     socialEvents,
+    couponDeals,
   });
   const row = await db.backupFile.create({
     data: { name: `backup-${new Date().toISOString().replace(/[:.]/g, "-")}.json`, size: Buffer.byteLength(body), automatic },
@@ -130,6 +134,7 @@ export async function restoreBackup(id: string, adminId: string) {
   };
 
   await db.$transaction(async (tx) => {
+    await tx.couponDeal.deleteMany();
     await tx.loginToken.deleteMany();
     await tx.mail.deleteMany();
     await tx.feedbackMessage.deleteMany();
@@ -164,5 +169,8 @@ export async function restoreBackup(id: string, adminId: string) {
     if (snapshot.campaigns.length) await tx.campaign.createMany({ data: snapshot.campaigns.map(dates) as never });
     if (snapshot.mails.length) await tx.mail.createMany({ data: snapshot.mails.map(dates) as never });
     if (snapshot.socialEvents.length) await tx.socialEvent.createMany({ data: snapshot.socialEvents.map(dates) as never });
+    const listingIds = new Set(snapshot.listings.map((row) => String(row.id ?? "")));
+    const couponDeals = snapshot.couponDeals.filter((row) => listingIds.has(String(row.listingId ?? "")));
+    if (couponDeals.length) await tx.couponDeal.createMany({ data: couponDeals.map(dates) as never });
   });
 }

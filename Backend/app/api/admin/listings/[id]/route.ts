@@ -38,7 +38,7 @@ export const PATCH = route<Context>(async (request, { params }) => {
     await recordActivity("listing", `${existing.name} was just published`);
     alert("listing.published", `${existing.name} is now live.`);
   }
-  revalidate("listings", `listing:${existing.slug}`, "ads");
+  revalidate("listings", `listing:${existing.slug}`, "ads", "coupon-codes");
   return ok(toEditable(await load(existing.id)));
 });
 
@@ -55,7 +55,7 @@ export const PUT = route<Context>(async (request, { params }) => {
     data: { ...prepared.columns, ...(contactEmail.success ? { contactEmail: contactEmail.data } : {}) },
   });
   await writeRelations(existing.id, prepared);
-  revalidate("listings", `listing:${existing.slug}`);
+  revalidate("listings", `listing:${existing.slug}`, "coupon-codes");
   return ok(toEditable(await load(existing.id)));
 });
 
@@ -68,6 +68,7 @@ export const DELETE = route<Context>(async (_request, { params }) => {
     db.vote.deleteMany({ where: { listingId: existing.id } }),
     db.founder.deleteMany({ where: { listingId: existing.id } }),
     db.listingCategory.deleteMany({ where: { listingId: existing.id } }),
+    db.couponDeal.deleteMany({ where: { listingId: existing.id } }),
     db.listing.delete({ where: { id: existing.id } }),
   ]);
   await Promise.all(
@@ -75,6 +76,6 @@ export const DELETE = route<Context>(async (_request, { params }) => {
       removeUpload(item).catch((error) => console.error("Listing file cleanup failed", error)),
     ),
   );
-  revalidate("listings", `listing:${existing.slug}`, "categories");
+  revalidate("listings", `listing:${existing.slug}`, "categories", "coupon-codes");
   return ok({ ok: true });
 });

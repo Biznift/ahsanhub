@@ -58,6 +58,7 @@ model User {
   id            String        @id @default(cuid())
   name          String
   email         String        @unique
+  phone         String        @default("")
   passwordHash  String
   role          Role          @default(owner)
   status        AccountStatus @default(active)
@@ -113,6 +114,7 @@ model Listing {
   votes              Vote[]
   reviews            Review[]
   alternatives       ListingAlternative[]
+  couponDeals        CouponDeal[]
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
   publishedAt  DateTime?
@@ -181,6 +183,24 @@ model Review {
   createdAt DateTime     @default(now())
 
   @@index([listingId, status])
+}
+
+model CouponDeal {
+  id         String   @id @default(cuid())
+  listingId  String
+  listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  code       String
+  note       String   @default("")
+  ctaEnabled Boolean  @default(false)
+  ctaLabel   String   @default("")
+  ctaUrl     String   @default("")
+  active     Boolean  @default(true)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([active, sortOrder])
+  @@index([listingId])
 }
 
 model Ad {

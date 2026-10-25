@@ -56,6 +56,15 @@ export type Page<T> = { items: T[]; total: number; page: number; pages: number }
 
 export type Review = { id: string; name: string; rating: number; body: string; createdAt: string };
 
+export type CouponAction = { label: string; url: string; kind: "website" | "offer" };
+
+export type CouponDeal = {
+  id: string;
+  note: string;
+  action: CouponAction | null;
+  listing: ListingCard;
+};
+
 export type AdCreative = { id: string; title: string; kind: "image" | "gif" | "video"; file: string; url: string };
 
 export type AdPlacementData = {

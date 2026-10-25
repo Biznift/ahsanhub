@@ -28,7 +28,7 @@ export const PATCH = route<Context>(async (request, { params }) => {
     data: { ...prepared.columns, ...(returnedToReview ? { status: "pending" as const } : {}) },
   });
   await writeRelations(existing.id, prepared);
-  revalidate("listings", `listing:${existing.slug}`, "ads");
+  revalidate("listings", `listing:${existing.slug}`, "ads", "coupon-codes");
   const row = await db.listing.findUniqueOrThrow({ where: { id: existing.id }, include: detailInclude });
   return ok({ ...toEditable(row), returnedToReview });
 });

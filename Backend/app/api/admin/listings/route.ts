@@ -57,7 +57,7 @@ export const POST = route(async (request) => {
   await writeRelations(listing.id, prepared);
   await recordActivity("listing", `${input.name} was just published`);
   alert("listing.published", `${input.name} was added by an admin and is now live.`);
-  revalidate("listings", `listing:${slug}`, "categories", "ads");
+  revalidate("listings", `listing:${slug}`, "categories", "ads", "coupon-codes");
   const row = await db.listing.findUniqueOrThrow({ where: { id: listing.id }, include: detailInclude });
   return ok(toEditable(row), { status: 201 });
 });

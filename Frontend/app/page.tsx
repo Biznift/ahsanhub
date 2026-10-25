@@ -1,19 +1,21 @@
 import Link from "next/link";
 import { ArrowRight, Search } from "lucide-react";
-import { getCategories, getListings } from "@/lib/api";
+import { getCategories, getCouponDeals, getListings } from "@/lib/api";
 import { KIND_LABEL, LISTING_KINDS } from "@/lib/format";
 import { Container, SectionHeader } from "@/components/section";
 import { ProductCard, ProductRow } from "@/components/product-card";
 import { AdSlot } from "@/components/ad-slot";
 import { CategoryIcon } from "@/components/category-icon";
+import { CouponGrid } from "@/components/coupon-card";
 
 export default async function HomePage() {
-  const [top, featured, recent, free, categories] = await Promise.all([
+  const [top, featured, recent, free, categories, deals] = await Promise.all([
     getListings({ sort: "top", limit: 5 }),
     getListings({ sort: "featured", limit: 6 }),
     getListings({ sort: "new", limit: 8 }),
     getListings({ pricing: "free", sort: "top", limit: 3 }),
     getCategories(),
+    getCouponDeals(6),
   ]);
   const popular = [...categories].sort((a, b) => b.count - a.count);
   const totalProducts = recent.total;
@@ -96,6 +98,20 @@ export default async function HomePage() {
                 <ProductCard key={listing.id} listing={listing} />
               ))}
             </div>
+          </Container>
+        </section>
+      )}
+
+      {deals.length > 0 && (
+        <section className="mt-16">
+          <Container>
+            <SectionHeader
+              eyebrow="Special deals"
+              title="Coupon codes"
+              description="Deals for products already on Ahsan Hub. The code is hidden until you sign in. A new account only needs your name, email, and phone."
+              href="/coupons"
+            />
+            <CouponGrid items={deals} />
           </Container>
         </section>
       )}

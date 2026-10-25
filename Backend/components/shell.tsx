@@ -28,6 +28,7 @@ import {
   Settings,
   ShoppingCart,
   Star,
+  Ticket,
   TicketPercent,
   Users,
 } from "lucide-react";
@@ -40,6 +41,7 @@ const ICONS: Record<string, typeof LayoutDashboard> = {
   listings: LayoutGrid,
   categories: Tags,
   ads: MonitorPlay,
+  "coupon-codes": Ticket,
   api: Braces,
   users: Users,
   orders: ShoppingCart,
