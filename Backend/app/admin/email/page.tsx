@@ -62,6 +62,8 @@ const PRESETS = [
   },
 ];
 
+const CUSTOM_HINT = "Type the SMTP host, port, and security from your mail provider. IMAP can be a different server. Port 587 is usually STARTTLS and port 465 is SSL/TLS. IMAP is usually port 993 with SSL/TLS.";
+
 const EVENTS = [
   { key: "verify", label: "Email verification", description: "Sent after sign-up with a link to confirm the address." },
   { key: "order_placed", label: "Order received", description: "Confirms a new order with its details and a payment link." },
@@ -93,7 +95,7 @@ export default function EmailPage() {
   const module = moduleBySlug("email");
   const { notify } = useStore();
   const [enabled, setEnabled] = useState(true);
-  const [host, setHost] = useState("smtp.gmail.com");
+  const [host, setHost] = useState("");
   const [port, setPort] = useState(587);
   const [secure, setSecure] = useState(false);
   const [username, setUsername] = useState("");
@@ -107,7 +109,7 @@ export default function EmailPage() {
   const [imapSecure, setImapSecure] = useState(true);
   const [inboxName, setInboxName] = useState("INBOX");
   const [testTo, setTestTo] = useState("");
-  const [hint, setHint] = useState(PRESETS[0].hint);
+  const [hint, setHint] = useState(CUSTOM_HINT);
   const [events, setEvents] = useState<Record<string, boolean>>(Object.fromEntries(EVENTS.map((event) => [event.key, true])));
   const [note, setNote] = useState<string | null>(null);
   const [noteOk, setNoteOk] = useState(true);
@@ -131,10 +133,44 @@ export default function EmailPage() {
         setImapPort(nextImapPort);
         setImapSecure(nextImapPort === 993 ? true : nextImapPort === 143 ? false : saved.imapSecure);
         setInboxName(saved.inboxName || "INBOX");
+        setHint(PRESETS.find((preset) => preset.host === saved.host)?.hint ?? CUSTOM_HINT);
         setEvents((current) => ({ ...current, ...saved.events }));
       })
       .catch(() => undefined);
   }, []);
+
+  const custom = !PRESETS.some((preset) => preset.host === host.trim());
+
+  function applySmtpSecurity(ssl: boolean) {
+    setSecure(ssl);
+    setPort((current) => {
+      if (ssl && (current === 587 || current === 25 || current === 2525)) return 465;
+      if (!ssl && current === 465) return 587;
+      return current;
+    });
+  }
+
+  function applyImapSecurity(ssl: boolean) {
+    setImapSecure(ssl);
+    setImapPort((current) => {
+      if (ssl && current === 143) return 993;
+      if (!ssl && current === 993) return 143;
+      return current;
+    });
+  }
+
+  function chooseCustom() {
+    if (!custom) {
+      setHost("");
+      setPort(587);
+      setSecure(false);
+      setImapHost("");
+      setImapPort(993);
+      setImapSecure(true);
+      setImapEnabled(true);
+    }
+    setHint(CUSTOM_HINT);
+  }
 
   function draft() {
     return { host, port, secure, username, password, fromName, fromEmail, imapHost, imapPort, imapSecure, inboxName };
@@ -186,7 +222,7 @@ export default function EmailPage() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="font-semibold">SMTP server</h2>
-              <p className="mt-1 text-sm text-[#667085]">Sends order mail, receipts, and your replies. Port 587 uses STARTTLS. Port 465 uses SSL/TLS.</p>
+              <p className="mt-1 text-sm text-[#667085]">Pick a provider or Custom, then enter that server. Port 587 uses STARTTLS. Port 465 uses SSL/TLS.</p>
             </div>
             <label className="flex items-center gap-2 text-sm font-medium">
               <input type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />
@@ -210,18 +246,33 @@ export default function EmailPage() {
                     setImapEnabled(Boolean(preset.imapHost));
                     setHint(preset.hint);
                   }}
-                  className={`rounded-full border px-3 py-1.5 text-sm ${host === preset.host ? "border-[#0b6e4f] bg-[#e7f3ee] text-[#0b6e4f]" : "border-[#e6e8ef]"}`}
+                  className={`rounded-full border px-3 py-1.5 text-sm ${host.trim() === preset.host ? "border-[#0b6e4f] bg-[#e7f3ee] text-[#0b6e4f]" : "border-[#e6e8ef]"}`}
                 >
                   {preset.name}
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={chooseCustom}
+                className={`rounded-full border px-3 py-1.5 text-sm ${custom ? "border-[#0b6e4f] bg-[#e7f3ee] text-[#0b6e4f]" : "border-[#e6e8ef]"}`}
+              >
+                Custom
+              </button>
             </div>
             {hint && <p className="mt-2 text-xs text-[#667085]">{hint}</p>}
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-4">
             <div className="sm:col-span-2">
               <Field label="SMTP host">
-                <TextInput value={host} onChange={(event) => setHost(event.target.value)} />
+                <TextInput
+                  value={host}
+                  placeholder="smtp.yourdomain.com"
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    setHost(next);
+                    setHint(PRESETS.find((preset) => preset.host === next.trim())?.hint ?? CUSTOM_HINT);
+                  }}
+                />
               </Field>
             </div>
             <Field label="Port">
@@ -239,15 +290,11 @@ export default function EmailPage() {
             <Field label="Security">
               <select
                 value={secure ? "ssl" : "starttls"}
-                onChange={(event) => {
-                  const ssl = event.target.value === "ssl";
-                  setSecure(ssl);
-                  setPort(ssl ? 465 : 587);
-                }}
+                onChange={(event) => applySmtpSecurity(event.target.value === "ssl")}
                 className="w-full rounded-lg border border-[#e6e8ef] bg-white px-3 py-2 text-sm"
               >
-                <option value="ssl">SSL/TLS (465)</option>
-                <option value="starttls">STARTTLS (587)</option>
+                <option value="ssl">SSL/TLS</option>
+                <option value="starttls">STARTTLS</option>
               </select>
             </Field>
             <div className="sm:col-span-2">
@@ -292,7 +339,7 @@ export default function EmailPage() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="font-semibold">IMAP inbox</h2>
-              <p className="mt-1 text-sm text-[#667085]">Reads mail sent to the from address, including replies, so you can answer from this page. It uses the same username and password as SMTP.</p>
+              <p className="mt-1 text-sm text-[#667085]">Use the provider preset, or type your own IMAP host. It uses the same username and password as SMTP.</p>
             </div>
             <label className="flex items-center gap-2 text-sm font-medium">
               <input type="checkbox" checked={imapEnabled} onChange={(event) => setImapEnabled(event.target.checked)} />
@@ -302,7 +349,7 @@ export default function EmailPage() {
           <div className="mt-4 grid gap-3 sm:grid-cols-4">
             <div className="sm:col-span-2">
               <Field label="IMAP host">
-                <TextInput value={imapHost} onChange={(event) => setImapHost(event.target.value)} placeholder="imap.gmail.com" />
+                <TextInput value={imapHost} onChange={(event) => setImapHost(event.target.value)} placeholder="imap.yourdomain.com" />
               </Field>
             </div>
             <Field label="Port">
@@ -320,15 +367,11 @@ export default function EmailPage() {
             <Field label="Security">
               <select
                 value={imapSecure ? "ssl" : "starttls"}
-                onChange={(event) => {
-                  const ssl = event.target.value === "ssl";
-                  setImapSecure(ssl);
-                  setImapPort(ssl ? 993 : 143);
-                }}
+                onChange={(event) => applyImapSecurity(event.target.value === "ssl")}
                 className="w-full rounded-lg border border-[#e6e8ef] bg-white px-3 py-2 text-sm"
               >
-                <option value="ssl">SSL/TLS (993)</option>
-                <option value="starttls">STARTTLS (143)</option>
+                <option value="ssl">SSL/TLS</option>
+                <option value="starttls">STARTTLS</option>
               </select>
             </Field>
             <div className="sm:col-span-2">

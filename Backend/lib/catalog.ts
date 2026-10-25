@@ -379,7 +379,7 @@ export const MODULES: KitModule[] = [
     label: "Email",
     group: "System",
     summary: "SMTP for outgoing mail, IMAP for the support inbox, and replies from the admin panel.",
-    functions: ["Pick an SMTP and IMAP preset", "Test the SMTP connection", "Turn on IMAP and name the support inbox", "Read mail sent to that inbox", "Reply from the admin panel", "Choose which emails send", "Send a test email"],
+    functions: ["Pick a provider or enter a custom SMTP and IMAP server", "Test the SMTP connection", "Turn on IMAP and name the support inbox", "Read mail sent to that inbox", "Reply from the admin panel", "Choose which emails send", "Send a test email"],
     endpoints: [
       { method: "GET", path: "/api/admin/email", summary: "SMTP and IMAP settings. The password is never returned." },
       { method: "PUT", path: "/api/admin/email", summary: "Save SMTP, IMAP, the support inbox name, and which emails are on" },
