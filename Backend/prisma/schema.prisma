@@ -301,6 +301,41 @@ model FeedbackMessage {
   createdAt DateTime       @default(now())
 }
 
+model SupportThread {
+  id            String           @id @default(cuid())
+  subject       String
+  peerName      String           @default("")
+  peerEmail     String
+  mailbox       String           @default("INBOX")
+  status        String           @default("OPEN")
+  unread        Boolean          @default(true)
+  lastMessageAt DateTime
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  messages      SupportMessage[]
+
+  @@index([lastMessageAt])
+  @@index([unread])
+}
+
+model SupportMessage {
+  id           String        @id @default(cuid())
+  threadId     String
+  thread       SupportThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  direction    String
+  fromName     String        @default("")
+  fromEmail    String
+  toEmail      String        @default("")
+  subject      String        @default("")
+  body         String
+  messageId    String?       @unique
+  inReplyTo    String        @default("")
+  referenceIds String        @default("")
+  createdAt    DateTime      @default(now())
+
+  @@index([threadId, createdAt])
+}
+
 model Campaign {
   id           String    @id @default(cuid())
   name         String

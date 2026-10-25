@@ -72,8 +72,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const [badges, setBadges] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    api<{ pending: number; pendingReviews: number }>("/api/admin/stats")
-      .then((stats) => setBadges({ listings: stats.pending, reviews: stats.pendingReviews }))
+    api<{ pending: number; pendingReviews: number; unreadMail?: number }>("/api/admin/stats")
+      .then((stats) => setBadges({ listings: stats.pending, reviews: stats.pendingReviews, email: stats.unreadMail ?? 0 }))
       .catch(() => setBadges({}));
   }, [pathname]);
   const modules = navModules().filter((item) => isPinnedNav(item.slug) || !hiddenSlugs.includes(item.slug));

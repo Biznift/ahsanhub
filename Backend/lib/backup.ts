@@ -21,6 +21,8 @@ const snapshotSchema = z.object({
   posts: z.array(z.record(z.string(), z.unknown())),
   feedbackThreads: z.array(z.record(z.string(), z.unknown())),
   feedbackMessages: z.array(z.record(z.string(), z.unknown())),
+  supportThreads: z.array(z.record(z.string(), z.unknown())).optional().default([]),
+  supportMessages: z.array(z.record(z.string(), z.unknown())).optional().default([]),
   campaigns: z.array(z.record(z.string(), z.unknown())),
   mails: z.array(z.record(z.string(), z.unknown())),
   socialEvents: z.array(z.record(z.string(), z.unknown())),
@@ -47,6 +49,8 @@ export async function createBackup(automatic = false) {
     posts,
     feedbackThreads,
     feedbackMessages,
+    supportThreads,
+    supportMessages,
     campaigns,
     mails,
     socialEvents,
@@ -65,6 +69,8 @@ export async function createBackup(automatic = false) {
     db.post.findMany(),
     db.feedbackThread.findMany(),
     db.feedbackMessage.findMany(),
+    db.supportThread.findMany(),
+    db.supportMessage.findMany(),
     db.campaign.findMany(),
     db.mail.findMany(),
     db.socialEvent.findMany(),
@@ -85,6 +91,8 @@ export async function createBackup(automatic = false) {
     posts,
     feedbackThreads,
     feedbackMessages,
+    supportThreads,
+    supportMessages,
     campaigns,
     mails,
     socialEvents,
@@ -127,7 +135,7 @@ export async function restoreBackup(id: string, adminId: string) {
 
   const dates = (row: Record<string, unknown>) => {
     const next = { ...row };
-    for (const key of ["createdAt", "updatedAt", "publishedAt", "sentAt", "occurredAt", "expiresAt"]) {
+    for (const key of ["createdAt", "updatedAt", "publishedAt", "sentAt", "occurredAt", "expiresAt", "lastMessageAt"]) {
       if (typeof next[key] === "string") next[key] = new Date(next[key] as string);
     }
     return next;
@@ -137,6 +145,8 @@ export async function restoreBackup(id: string, adminId: string) {
     await tx.couponDeal.deleteMany();
     await tx.loginToken.deleteMany();
     await tx.mail.deleteMany();
+    await tx.supportMessage.deleteMany();
+    await tx.supportThread.deleteMany();
     await tx.feedbackMessage.deleteMany();
     await tx.feedbackThread.deleteMany();
     await tx.vote.deleteMany();
@@ -166,6 +176,8 @@ export async function restoreBackup(id: string, adminId: string) {
     if (snapshot.posts.length) await tx.post.createMany({ data: snapshot.posts.map(dates) as never });
     if (snapshot.feedbackThreads.length) await tx.feedbackThread.createMany({ data: snapshot.feedbackThreads.map(dates) as never });
     if (snapshot.feedbackMessages.length) await tx.feedbackMessage.createMany({ data: snapshot.feedbackMessages.map(dates) as never });
+    if (snapshot.supportThreads.length) await tx.supportThread.createMany({ data: snapshot.supportThreads.map(dates) as never });
+    if (snapshot.supportMessages.length) await tx.supportMessage.createMany({ data: snapshot.supportMessages.map(dates) as never });
     if (snapshot.campaigns.length) await tx.campaign.createMany({ data: snapshot.campaigns.map(dates) as never });
     if (snapshot.mails.length) await tx.mail.createMany({ data: snapshot.mails.map(dates) as never });
     if (snapshot.socialEvents.length) await tx.socialEvent.createMany({ data: snapshot.socialEvents.map(dates) as never });

@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
   // Next writes an AGENTS.md on dev startup. This app does not use that file.
   agentRules: false,
   poweredByHeader: false,
+  serverExternalPackages: ["imapflow", "mailparser"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

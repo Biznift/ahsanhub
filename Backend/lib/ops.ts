@@ -56,7 +56,28 @@ export const emailInputSchema = z.object({
   password: z.string().max(200).optional(),
   fromName: z.string().trim().max(80),
   fromEmail: emailField,
+  imapEnabled: z.boolean(),
+  imapHost: z.string().trim().max(200),
+  imapPort: z.number().int().min(1).max(65535),
+  imapSecure: z.boolean(),
+  inboxName: z.string().trim().max(80),
   events: z.record(z.string(), z.boolean()),
+});
+
+export const emailProbeSchema = z.object({
+  kind: z.enum(["smtp", "imap", "send"]),
+  to: z.string().trim().email().optional(),
+  host: z.string().trim().max(200).optional(),
+  port: z.number().int().min(1).max(65535).optional(),
+  secure: z.boolean().optional(),
+  username: z.string().trim().max(200).optional(),
+  password: z.string().max(200).optional(),
+  fromName: z.string().trim().max(80).optional(),
+  fromEmail: z.string().trim().max(120).optional(),
+  imapHost: z.string().trim().max(200).optional(),
+  imapPort: z.number().int().min(1).max(65535).optional(),
+  imapSecure: z.boolean().optional(),
+  inboxName: z.string().trim().max(80).optional(),
 });
 
 export type StoredEmail = {
@@ -68,6 +89,11 @@ export type StoredEmail = {
   passwordSeal: string;
   fromName: string;
   fromEmail: string;
+  imapEnabled: boolean;
+  imapHost: string;
+  imapPort: number;
+  imapSecure: boolean;
+  inboxName: string;
   events: Record<string, boolean>;
 };
 
@@ -80,8 +106,21 @@ export const DEFAULT_EMAIL: StoredEmail = {
   passwordSeal: "",
   fromName: "Ahsan Hub",
   fromEmail: "",
+  imapEnabled: false,
+  imapHost: "",
+  imapPort: 993,
+  imapSecure: true,
+  inboxName: "INBOX",
   events: Object.fromEntries(EMAIL_EVENTS.map((key) => [key, key === "verify" || key === "feedback_reply"])),
 };
+
+/** Mailbox folder people write to. INBOX is the usual name. */
+export function cleanInboxName(value: string) {
+  const name = value.trim().replace(/\s+/g, " ");
+  if (!name) return "INBOX";
+  if (name.length > 80 || /[\u0000-\u001f\u007f]/.test(name)) throw new HttpError(400, "Enter a support inbox name without line breaks.");
+  return name;
+}
 
 const TELEGRAM_EVENTS = [
   "order.created",
@@ -256,6 +295,11 @@ export async function readEmail(): Promise<StoredEmail> {
         passwordSeal: z.string().optional(),
         fromName: z.string().optional(),
         fromEmail: z.string().optional(),
+        imapEnabled: z.boolean().optional(),
+        imapHost: z.string().optional(),
+        imapPort: z.number().optional(),
+        imapSecure: z.boolean().optional(),
+        inboxName: z.string().optional(),
         events: z.record(z.string(), z.boolean()).optional(),
       })
       .safeParse(value);
@@ -263,6 +307,13 @@ export async function readEmail(): Promise<StoredEmail> {
     return {
       ...DEFAULT_EMAIL,
       ...parsed.data,
+      inboxName: (() => {
+        try {
+          return cleanInboxName(parsed.data.inboxName || "");
+        } catch {
+          return DEFAULT_EMAIL.inboxName;
+        }
+      })(),
       events: { ...DEFAULT_EMAIL.events, ...parsed.data.events },
     };
   });
@@ -280,6 +331,11 @@ export async function saveEmail(input: z.infer<typeof emailInputSchema>, passwor
     passwordSeal,
     fromName: input.fromName || "Ahsan Hub",
     fromEmail: input.fromEmail,
+    imapEnabled: input.imapEnabled,
+    imapHost: input.imapHost,
+    imapPort: input.imapPort,
+    imapSecure: input.imapSecure,
+    inboxName: cleanInboxName(input.inboxName),
     events,
   };
   await writeJson("email", next);
@@ -296,6 +352,11 @@ export function publicEmail(stored: StoredEmail) {
     hasPassword: Boolean(stored.passwordSeal),
     fromName: stored.fromName,
     fromEmail: stored.fromEmail,
+    imapEnabled: stored.imapEnabled,
+    imapHost: stored.imapHost,
+    imapPort: stored.imapPort,
+    imapSecure: stored.imapSecure,
+    inboxName: stored.inboxName,
     events: stored.events,
   };
 }
