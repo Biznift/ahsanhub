@@ -4,6 +4,7 @@ import { HttpError } from "@/lib/http";
 import { normalizeUrl } from "@/lib/directory";
 import { readSite } from "@/lib/site";
 import { isPinnedNav, navModules } from "@/lib/catalog";
+import { mailTransport, SENDER_HOST, type MailTransport } from "@/lib/mail-transport";
 
 const emailField = z.string().trim().max(120).refine((value) => value === "" || z.string().email().safeParse(value).success, "Enter a valid email");
 
@@ -47,13 +48,17 @@ export const DEFAULT_GENERAL: GeneralSettings = {
 
 const EMAIL_EVENTS = ["verify", "order_placed", "payment_reminder", "payment_received", "order_status", "order_message", "feedback_reply"] as const;
 
+/** Mailbox passwords are short. Sender tokens are JWTs and run past 1,000 characters. */
+const MAIL_SECRET_MAX = 8000;
+
 export const emailInputSchema = z.object({
   enabled: z.boolean(),
+  transport: z.enum(["smtp", "sender"]).optional(),
   host: z.string().trim().max(200),
   port: z.number().int().min(1).max(65535),
   secure: z.boolean(),
   username: z.string().trim().max(200),
-  password: z.string().max(200).optional(),
+  password: z.string().max(MAIL_SECRET_MAX).optional(),
   fromName: z.string().trim().max(80),
   fromEmail: emailField,
   imapEnabled: z.boolean(),
@@ -67,11 +72,12 @@ export const emailInputSchema = z.object({
 export const emailProbeSchema = z.object({
   kind: z.enum(["smtp", "imap", "send"]),
   to: z.string().trim().email().optional(),
+  transport: z.enum(["smtp", "sender"]).optional(),
   host: z.string().trim().max(200).optional(),
   port: z.number().int().min(1).max(65535).optional(),
   secure: z.boolean().optional(),
   username: z.string().trim().max(200).optional(),
-  password: z.string().max(200).optional(),
+  password: z.string().max(MAIL_SECRET_MAX).optional(),
   fromName: z.string().trim().max(80).optional(),
   fromEmail: z.string().trim().max(120).optional(),
   imapHost: z.string().trim().max(200).optional(),
@@ -82,6 +88,7 @@ export const emailProbeSchema = z.object({
 
 export type StoredEmail = {
   enabled: boolean;
+  transport: MailTransport;
   host: string;
   port: number;
   secure: boolean;
@@ -99,6 +106,7 @@ export type StoredEmail = {
 
 export const DEFAULT_EMAIL: StoredEmail = {
   enabled: false,
+  transport: "smtp",
   host: "",
   port: 587,
   secure: false,
@@ -288,6 +296,7 @@ export async function readEmail(): Promise<StoredEmail> {
     const parsed = z
       .object({
         enabled: z.boolean().optional(),
+        transport: z.enum(["smtp", "sender"]).optional(),
         host: z.string().optional(),
         port: z.number().optional(),
         secure: z.boolean().optional(),
@@ -307,6 +316,7 @@ export async function readEmail(): Promise<StoredEmail> {
     return {
       ...DEFAULT_EMAIL,
       ...parsed.data,
+      transport: mailTransport(parsed.data),
       inboxName: (() => {
         try {
           return cleanInboxName(parsed.data.inboxName || "");
@@ -322,16 +332,18 @@ export async function readEmail(): Promise<StoredEmail> {
 export async function saveEmail(input: z.infer<typeof emailInputSchema>, passwordSeal: string) {
   const events: Record<string, boolean> = { ...DEFAULT_EMAIL.events };
   for (const key of EMAIL_EVENTS) if (key in input.events) events[key] = Boolean(input.events[key]);
+  const transport = mailTransport({ transport: input.transport, host: input.host });
   const next: StoredEmail = {
     enabled: input.enabled,
-    host: input.host,
+    transport,
+    host: transport === "sender" ? SENDER_HOST : input.host,
     port: input.port,
     secure: input.secure,
     username: input.username,
     passwordSeal,
     fromName: input.fromName || "Ahsan Hub",
     fromEmail: input.fromEmail,
-    imapEnabled: input.imapEnabled,
+    imapEnabled: transport === "sender" ? false : input.imapEnabled,
     imapHost: input.imapHost,
     imapPort: input.imapPort,
     imapSecure: input.imapSecure,
@@ -345,6 +357,7 @@ export async function saveEmail(input: z.infer<typeof emailInputSchema>, passwor
 export function publicEmail(stored: StoredEmail) {
   return {
     enabled: stored.enabled,
+    transport: stored.transport,
     host: stored.host,
     port: stored.port,
     secure: stored.secure,

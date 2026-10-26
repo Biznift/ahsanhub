@@ -15,7 +15,7 @@ export const POST = route<Context>(async (_request, { params }) => {
   const campaign = await db.campaign.findUnique({ where: { id } });
   if (!campaign) throw new HttpError(404, "Campaign not found.");
   if (campaign.status === "sent") throw new HttpError(400, "This campaign was already sent.");
-  if (!(await emailEnabled())) throw new HttpError(400, "Turn on email and save SMTP settings before sending.");
+  if (!(await emailEnabled())) throw new HttpError(400, "Turn on email and save the email settings before sending.");
   const { people } = await loadPeople();
   const recipients = audiencePeople(people, campaign.audience as CampaignAudience).slice(0, 200);
   if (recipients.length === 0) throw new HttpError(400, "That audience has no active people.");
@@ -32,7 +32,7 @@ export const POST = route<Context>(async (_request, { params }) => {
       alert("email.failed", `Campaign “${campaign.name}” could not email ${person.email}.`);
     }
   }
-  if (sent.length === 0) throw new HttpError(400, "No emails were sent. Check the SMTP settings.");
+  if (sent.length === 0) throw new HttpError(400, "No emails were sent. Check the email settings.");
   const row = await db.campaign.update({
     where: { id },
     data: { status: "sent", sentAt: new Date(), recipientIds: sent },

@@ -495,7 +495,7 @@ function Composer({
         className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl"
       >
         <h2 className="text-lg font-semibold">Email {people.length === 1 ? people[0].name : `${people.length} people`}</h2>
-        <p className="mt-1 text-sm text-[#667085]">{"{{name}} and {{plan}} are filled in for each person. Email is sent through the SMTP settings."}</p>
+        <p className="mt-1 text-sm text-[#667085]">{"{{name}} and {{plan}} are filled in for each person. Email is sent through the saved email settings."}</p>
         {disabled && <p className="mt-2 text-sm text-[#b54708]">This includes a disabled account.</p>}
         <div className="mt-3 flex flex-wrap gap-1">
           {people.slice(0, 8).map((person) => (

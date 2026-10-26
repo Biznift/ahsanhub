@@ -2,10 +2,13 @@ import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import nodemailer from "nodemailer";
 import { HttpError } from "@/lib/http";
+import { mailTransport, SENDER_HOST, type MailTransport } from "@/lib/mail-transport";
 import { assertMailHost, cleanInboxName, readEmail, type StoredEmail } from "@/lib/ops";
 import { openSeal } from "@/lib/secrets";
+import { sendSenderMail, verifySenderToken } from "@/lib/sender";
 
 export type MailOverride = {
+  transport?: MailTransport;
   host?: string;
   port?: number;
   secure?: boolean;
@@ -20,6 +23,7 @@ export type MailOverride = {
 };
 
 export type MailAccount = {
+  transport: MailTransport;
   host: string;
   port: number;
   secure: boolean;
@@ -62,12 +66,24 @@ export function imapMode(port: number, secure: boolean) {
   return secure;
 }
 
-export function mailFailure(error: unknown, kind: "SMTP" | "IMAP") {
+/** App-password advice only for hosts that actually require one. */
+function authHint(host: string) {
+  const name = host.trim().toLowerCase();
+  if (/gmail|googlemail/.test(name) || name === "google.com" || name.endsWith(".google.com")) {
+    return "Gmail needs an app password, not the normal Gmail password.";
+  }
+  if (name.includes("zoho.")) return "Zoho needs an app password when two-factor authentication is on.";
+  if (name) return `Check the mailbox address and password on ${name}.`;
+  return "Check the mailbox address and password.";
+}
+
+export function mailFailure(error: unknown, kind: "SMTP" | "IMAP", host = "") {
   if (error instanceof HttpError) return error;
   const err = error as { code?: string; responseCode?: number; message?: string; response?: string; authenticationFailed?: boolean };
   const text = `${err.code ?? ""} ${err.message ?? ""} ${err.response ?? ""}`.toLowerCase();
   if (err.code === "EAUTH" || err.authenticationFailed || err.responseCode === 535 || /invalid login|authentication failed|username and password|application-specific password|bad credentials/.test(text)) {
-    return new HttpError(400, `${kind} rejected the username or password. Gmail and Zoho need an app password, not the normal login password.`);
+    const code = err.responseCode ? ` (${err.responseCode})` : "";
+    return new HttpError(400, `${kind} rejected the username or password${code}. ${authHint(host)}`);
   }
   if (/wrong version number|packet length too long|ssl routines|eproto/.test(text)) {
     return new HttpError(400, `${kind} security does not match the port. Use SSL/TLS on 465 for SMTP and 993 for IMAP. Use STARTTLS on 587.`);
@@ -117,7 +133,9 @@ export async function ipv4Address(host: string) {
 
 export async function resolveMailAccount(over: MailOverride = {}): Promise<MailAccount> {
   const saved = await readEmail();
-  const host = (over.host ?? saved.host).trim();
+  const requestedHost = (over.host ?? saved.host).trim();
+  const transport = mailTransport({ transport: over.transport ?? saved.transport, host: requestedHost });
+  const host = transport === "sender" ? SENDER_HOST : requestedHost;
   const typed = over.password?.trim() ?? "";
   let password = "";
   if (typed) password = normalizeSecret(typed, host);
@@ -127,6 +145,7 @@ export async function resolveMailAccount(over: MailOverride = {}): Promise<MailA
     password = normalizeSecret(opened, host);
   }
   return {
+    transport,
     host,
     port: over.port ?? saved.port,
     secure: over.secure ?? saved.secure,
@@ -184,14 +203,43 @@ async function sendThrough(account: MailAccount, to: string, subject: string, te
     return info.messageId || "";
   } catch (error) {
     if (!(error instanceof HttpError)) console.error("SMTP send failed", error instanceof Error ? error.message : "unknown");
-    throw mailFailure(error, "SMTP");
+    throw mailFailure(error, "SMTP", account.host);
   } finally {
     transport.close();
   }
 }
 
+async function sendWithAccount(account: MailAccount, to: string, subject: string, text: string, headers?: MailHeaders) {
+  if (account.transport === "sender") {
+    return sendSenderMail(account.password, {
+      fromEmail: account.fromEmail,
+      fromName: account.fromName,
+      to,
+      subject,
+      text,
+      inReplyTo: headers?.inReplyTo,
+      references: headers?.references,
+    });
+  }
+  return sendThrough(account, to, subject, text, headers);
+}
+
 export async function probeSmtp(over: MailOverride, to?: string, send = false) {
   const account = await resolveMailAccount(over);
+  if (account.transport === "sender") {
+    if (!account.password) throw new HttpError(400, "Add the Sender API token.");
+    if (!send) return verifySenderToken(account.password);
+    const target = to?.trim() || "";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(target)) throw new HttpError(400, "Enter an email address to send the test to.");
+    await sendSenderMail(account.password, {
+      fromEmail: account.fromEmail,
+      fromName: account.fromName,
+      to: target,
+      subject: "Ahsan Hub test email",
+      text: "This is a test from the Ahsan Hub admin. If you can read it, Sender is working.",
+    });
+    return { ok: true as const, detail: `Test email sent to ${target}.`, to: target };
+  }
   const mode = smtpMode(account.port, account.secure);
   if (!send) {
     const transport = await createSmtp(account);
@@ -199,7 +247,7 @@ export async function probeSmtp(over: MailOverride, to?: string, send = false) {
       await transport.verify();
     } catch (error) {
       if (!(error instanceof HttpError)) console.error("SMTP verify failed", error instanceof Error ? error.message : "unknown");
-      throw mailFailure(error, "SMTP");
+      throw mailFailure(error, "SMTP", account.host);
     } finally {
       transport.close();
     }
@@ -216,12 +264,13 @@ export async function deliverEmail(to: string, subject: string, text: string, he
   const settings = await readEmail();
   if (!settings.enabled) throw new HttpError(400, "Email sending is turned off.");
   const account = await resolveMailAccount();
-  return sendThrough(account, to, subject, text, headers);
+  return sendWithAccount(account, to, subject, text, headers);
 }
 
 export async function emailEnabled(event?: string) {
   const settings: StoredEmail = await readEmail();
-  if (!settings.enabled || !settings.passwordSeal || !settings.host || !settings.fromEmail) return false;
+  if (!settings.enabled || !settings.passwordSeal || !settings.fromEmail) return false;
+  if (settings.transport !== "sender" && !settings.host) return false;
   if (event && settings.events[event] === false) return false;
   return true;
 }

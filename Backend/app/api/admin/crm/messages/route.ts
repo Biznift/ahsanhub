@@ -16,7 +16,7 @@ const schema = z.object({
 export const POST = route(async (request) => {
   await requireAdmin();
   const input = schema.parse(await readJson(request));
-  if (!(await emailEnabled())) throw new HttpError(400, "Turn on email and save SMTP settings before sending.");
+  if (!(await emailEnabled())) throw new HttpError(400, "Turn on email and save the email settings before sending.");
   const { people } = await loadPeople();
   const targets = people.filter((person) => input.userIds.includes(person.id) && person.accountStatus === "active");
   if (targets.length === 0) throw new HttpError(400, "No active people to email.");
@@ -33,6 +33,6 @@ export const POST = route(async (request) => {
       alert("email.failed", `Could not email ${person.email}.`);
     }
   }
-  if (sent === 0) throw new HttpError(400, "No emails were sent. Check the SMTP settings.");
+  if (sent === 0) throw new HttpError(400, "No emails were sent. Check the email settings.");
   return ok({ sent });
 });

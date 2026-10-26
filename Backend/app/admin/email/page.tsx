@@ -8,10 +8,22 @@ import { SecretInput } from "@/components/secret-input";
 import { SupportInbox } from "@/components/support-inbox";
 import { Button, Field, TextInput } from "@/components/ui";
 import { api } from "@/components/admin-kit";
+import { SENDER_HOST, type MailTransport } from "@/lib/mail-transport";
 
-const PRESETS = [
+const PRESETS: Array<{
+  name: string;
+  transport: MailTransport;
+  host: string;
+  port: number;
+  secure: boolean;
+  imapHost: string;
+  imapPort: number;
+  imapSecure: boolean;
+  hint: string;
+}> = [
   {
     name: "Gmail / Google Workspace",
+    transport: "smtp",
     host: "smtp.gmail.com",
     port: 587,
     secure: false,
@@ -22,6 +34,7 @@ const PRESETS = [
   },
   {
     name: "Zoho Mail",
+    transport: "smtp",
     host: "smtp.zoho.com",
     port: 587,
     secure: false,
@@ -32,6 +45,7 @@ const PRESETS = [
   },
   {
     name: "Outlook / Microsoft 365",
+    transport: "smtp",
     host: "smtp.office365.com",
     port: 587,
     secure: false,
@@ -42,6 +56,7 @@ const PRESETS = [
   },
   {
     name: "Brevo",
+    transport: "smtp",
     host: "smtp-relay.brevo.com",
     port: 587,
     secure: false,
@@ -52,6 +67,7 @@ const PRESETS = [
   },
   {
     name: "Resend",
+    transport: "smtp",
     host: "smtp.resend.com",
     port: 465,
     secure: true,
@@ -59,6 +75,17 @@ const PRESETS = [
     imapPort: 993,
     imapSecure: true,
     hint: "Username is resend. Password is your API key. Resend only sends mail, so replies need a separate IMAP mailbox.",
+  },
+  {
+    name: "Sender",
+    transport: "sender",
+    host: SENDER_HOST,
+    port: 587,
+    secure: false,
+    imapHost: "",
+    imapPort: 993,
+    imapSecure: true,
+    hint: "Paste the API token from Sender → Settings → API access tokens. The from address must be on a domain you verified in Sender. No SMTP host or mailbox password. Replies arrive at the from address.",
   },
 ];
 
@@ -76,6 +103,7 @@ const EVENTS = [
 
 type SavedEmail = {
   enabled: boolean;
+  transport?: MailTransport;
   host: string;
   port: number;
   secure: boolean;
@@ -95,6 +123,8 @@ export default function EmailPage() {
   const module = moduleBySlug("email");
   const { notify } = useStore();
   const [enabled, setEnabled] = useState(true);
+  const [transport, setTransport] = useState<MailTransport>("smtp");
+  const [savedTransport, setSavedTransport] = useState<MailTransport>("smtp");
   const [host, setHost] = useState("");
   const [port, setPort] = useState(587);
   const [secure, setSecure] = useState(false);
@@ -119,7 +149,10 @@ export default function EmailPage() {
     api<SavedEmail>("/api/admin/email")
       .then((saved) => {
         const nextPort = saved.port || 587;
+        const nextTransport: MailTransport = saved.transport === "sender" || saved.host === SENDER_HOST ? "sender" : "smtp";
         setEnabled(saved.enabled);
+        setTransport(nextTransport);
+        setSavedTransport(nextTransport);
         setHost(saved.host);
         setPort(nextPort);
         setSecure(nextPort === 465 ? true : nextPort === 587 || nextPort === 25 || nextPort === 2525 ? false : saved.secure);
@@ -128,18 +161,19 @@ export default function EmailPage() {
         setFromName(saved.fromName);
         setFromEmail(saved.fromEmail);
         const nextImapPort = saved.imapPort || 993;
-        setImapEnabled(saved.imapEnabled);
+        setImapEnabled(nextTransport === "sender" ? false : saved.imapEnabled);
         setImapHost(saved.imapHost);
         setImapPort(nextImapPort);
         setImapSecure(nextImapPort === 993 ? true : nextImapPort === 143 ? false : saved.imapSecure);
         setInboxName(saved.inboxName || "INBOX");
-        setHint(PRESETS.find((preset) => preset.host === saved.host)?.hint ?? CUSTOM_HINT);
+        setHint(PRESETS.find((preset) => (nextTransport === "sender" ? preset.transport === "sender" : preset.host === saved.host))?.hint ?? CUSTOM_HINT);
         setEvents((current) => ({ ...current, ...saved.events }));
       })
       .catch(() => undefined);
   }, []);
 
-  const custom = !PRESETS.some((preset) => preset.host === host.trim());
+  const sender = transport === "sender";
+  const custom = !sender && !PRESETS.some((preset) => preset.transport === "smtp" && preset.host === host.trim());
 
   function applySmtpSecurity(ssl: boolean) {
     setSecure(ssl);
@@ -169,11 +203,12 @@ export default function EmailPage() {
       setImapSecure(true);
       setImapEnabled(true);
     }
+    setTransport("smtp");
     setHint(CUSTOM_HINT);
   }
 
   function draft() {
-    return { host, port, secure, username, password, fromName, fromEmail, imapHost, imapPort, imapSecure, inboxName };
+    return { transport, host, port, secure, username, password, fromName, fromEmail, imapEnabled: sender ? false : imapEnabled, imapHost, imapPort, imapSecure, inboxName };
   }
 
   function report(message: string, ok: boolean) {
@@ -206,8 +241,9 @@ export default function EmailPage() {
         body: JSON.stringify({ enabled, ...draft(), events }),
       });
       setHasPassword(saved.hasPassword);
+      setSavedTransport(transport);
       setPassword("");
-      report("Saved. The password stays on the server and is never shown again.", true);
+      report(sender ? "Saved. The API token stays on the server and is never shown again." : "Saved. The password stays on the server and is never shown again.", true);
     } catch (problem) {
       report((problem as Error).message, false);
     } finally {
@@ -221,8 +257,12 @@ export default function EmailPage() {
         <section className="rounded-md border border-[#e6e8ef] bg-white p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="font-semibold">SMTP server</h2>
-              <p className="mt-1 text-sm text-[#667085]">Pick a provider or Custom, then enter that server. Port 587 uses STARTTLS. Port 465 uses SSL/TLS.</p>
+              <h2 className="font-semibold">{sender ? "Sender" : "SMTP server"}</h2>
+              <p className="mt-1 text-sm text-[#667085]">
+                {sender
+                  ? "Paste your Sender API token and the from address on your verified domain. Host, port, and a mailbox password are not used."
+                  : "Pick a provider or Custom, then enter that server. Port 587 uses STARTTLS. Port 465 uses SSL/TLS."}
+              </p>
             </div>
             <label className="flex items-center gap-2 text-sm font-medium">
               <input type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />
@@ -237,16 +277,17 @@ export default function EmailPage() {
                   key={preset.name}
                   type="button"
                   onClick={() => {
+                    setTransport(preset.transport);
                     setHost(preset.host);
                     setPort(preset.port);
                     setSecure(preset.secure);
                     setImapHost(preset.imapHost);
                     setImapPort(preset.imapPort);
                     setImapSecure(preset.imapSecure);
-                    setImapEnabled(Boolean(preset.imapHost));
+                    setImapEnabled(preset.transport === "sender" ? false : Boolean(preset.imapHost));
                     setHint(preset.hint);
                   }}
-                  className={`rounded-full border px-3 py-1.5 text-sm ${host.trim() === preset.host ? "border-[#0b6e4f] bg-[#e7f3ee] text-[#0b6e4f]" : "border-[#e6e8ef]"}`}
+                  className={`rounded-full border px-3 py-1.5 text-sm ${(preset.transport === "sender" ? sender : !sender && host.trim() === preset.host) ? "border-[#0b6e4f] bg-[#e7f3ee] text-[#0b6e4f]" : "border-[#e6e8ef]"}`}
                 >
                   {preset.name}
                 </button>
@@ -261,7 +302,14 @@ export default function EmailPage() {
             </div>
             {hint && <p className="mt-2 text-xs text-[#667085]">{hint}</p>}
           </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-4">
+          <div className={`mt-4 grid gap-3 ${sender ? "sm:grid-cols-2" : "sm:grid-cols-4"}`}>
+            {sender ? (
+              <div className="sm:col-span-2">
+                <Field label="API token">
+                  <SecretInput saved={hasPassword && savedTransport === "sender"} value={password} onChange={setPassword} placeholder="Sender API token" />
+                </Field>
+              </div>
+            ) : (
             <div className="sm:col-span-2">
               <Field label="SMTP host">
                 <TextInput
@@ -270,11 +318,20 @@ export default function EmailPage() {
                   onChange={(event) => {
                     const next = event.target.value;
                     setHost(next);
-                    setHint(PRESETS.find((preset) => preset.host === next.trim())?.hint ?? CUSTOM_HINT);
+                    if (next.trim().toLowerCase() === SENDER_HOST) {
+                      setTransport("sender");
+                      setImapEnabled(false);
+                      setHint(PRESETS.find((preset) => preset.transport === "sender")?.hint ?? CUSTOM_HINT);
+                      return;
+                    }
+                    setTransport("smtp");
+                    setHint(PRESETS.find((preset) => preset.transport === "smtp" && preset.host === next.trim())?.hint ?? CUSTOM_HINT);
                   }}
                 />
               </Field>
             </div>
+            )}
+            {!sender && (
             <Field label="Port">
               <TextInput
                 type="number"
@@ -287,6 +344,8 @@ export default function EmailPage() {
                 }}
               />
             </Field>
+            )}
+            {!sender && (
             <Field label="Security">
               <select
                 value={secure ? "ssl" : "starttls"}
@@ -297,22 +356,27 @@ export default function EmailPage() {
                 <option value="starttls">STARTTLS</option>
               </select>
             </Field>
+            )}
+            {!sender && (
             <div className="sm:col-span-2">
               <Field label="Username">
                 <TextInput value={username} onChange={(event) => setUsername(event.target.value)} placeholder="you@example.com" />
               </Field>
             </div>
+            )}
+            {!sender && (
             <div className="sm:col-span-2">
               <Field label="Password / API key">
                 <SecretInput saved={hasPassword} value={password} onChange={setPassword} />
               </Field>
             </div>
-            <div className="sm:col-span-2">
+            )}
+            <div className={sender ? "" : "sm:col-span-2"}>
               <Field label="From name">
                 <TextInput value={fromName} onChange={(event) => setFromName(event.target.value)} />
               </Field>
             </div>
-            <div className="sm:col-span-2">
+            <div className={sender ? "" : "sm:col-span-2"}>
               <Field label="From email">
                 <TextInput value={fromEmail} onChange={(event) => setFromEmail(event.target.value)} placeholder="support@example.com" />
               </Field>
@@ -325,17 +389,21 @@ export default function EmailPage() {
               </Field>
             </div>
             <Button type="button" tone="ghost" disabled={busy !== null} onClick={() => probe("smtp")}>
-              {busy === "smtp" ? "Connecting…" : "Test SMTP connection"}
+              {busy === "smtp" ? "Connecting…" : sender ? "Test API token" : "Test SMTP connection"}
             </Button>
             <Button type="button" tone="ghost" disabled={busy !== null} onClick={() => probe("send")}>
               {busy === "send" ? "Sending…" : "Send test email"}
             </Button>
           </div>
-          <p className="mt-2 text-xs text-[#667085]">Tests use the fields above. Leave the password blank to use the one already saved.</p>
+          <p className="mt-2 text-xs text-[#667085]">
+            {sender
+              ? "Tests use the token and from address above. Leave the token blank to use the one already saved."
+              : "Tests use the fields above. Leave the password blank to use the one already saved."}
+          </p>
           {note && <p className={`mt-3 text-sm ${noteOk ? "text-[#12b76a]" : "text-[#b42318]"}`}>{note}</p>}
         </section>
 
-        <section className="rounded-md border border-[#e6e8ef] bg-white p-5">
+        {!sender && <section className="rounded-md border border-[#e6e8ef] bg-white p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="font-semibold">IMAP inbox</h2>
@@ -389,7 +457,7 @@ export default function EmailPage() {
             </Button>
           </div>
           {note && <p className={`mt-3 text-sm ${noteOk ? "text-[#12b76a]" : "text-[#b42318]"}`}>{note}</p>}
-        </section>
+        </section>}
 
         <section className="rounded-md border border-[#e6e8ef] bg-white p-5">
           <h2 className="font-semibold">Customer emails</h2>
@@ -414,9 +482,11 @@ export default function EmailPage() {
           {busy === "save" ? "Saving…" : "Save email settings"}
         </Button>
       </form>
+      {!sender && (
       <div className="mt-4">
         <SupportInbox />
       </div>
+      )}
     </ModuleFrame>
   );
 }

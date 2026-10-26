@@ -107,7 +107,7 @@ export async function verifyImap(over: MailOverride = {}) {
     await client.connect();
   } catch (error) {
     if (!(error instanceof HttpError)) console.error("IMAP verify failed", error instanceof Error ? error.message : "unknown");
-    throw mailFailure(error, "IMAP");
+    throw mailFailure(error, "IMAP", account.imapHost);
   }
   const boxes = client.mailboxList ?? [];
   if (boxes.length && !boxes.some((box) => sameBox(box, account.inboxName))) {
@@ -120,14 +120,14 @@ export async function verifyImap(over: MailOverride = {}) {
   return { ok: true as const, detail: `IMAP connected. Mail in "${account.inboxName}" can be answered from this page.` };
 }
 
-async function openBox(client: ImapFlow, wanted: string) {
+async function openBox(client: ImapFlow, wanted: string, host: string) {
   try {
     return await client.getMailboxLock(wanted);
   } catch (error) {
     const boxes = await client.list().catch(() => []);
     const match = boxes.find((box) => sameBox(box, wanted));
     if (match) return client.getMailboxLock(match.path);
-    if (!boxes.length) throw mailFailure(error, "IMAP");
+    if (!boxes.length) throw mailFailure(error, "IMAP", host);
     const names = boxes
       .filter((box) => !box.flags.has("\\Noselect"))
       .map((box) => box.path)
@@ -143,9 +143,9 @@ async function fetchMailbox(account: MailAccount) {
     try {
       await client.connect();
     } catch (error) {
-      throw mailFailure(error, "IMAP");
+      throw mailFailure(error, "IMAP", account.imapHost);
     }
-    const lock = await openBox(client, account.inboxName);
+    const lock = await openBox(client, account.inboxName, account.imapHost);
     try {
       const box = client.mailbox;
       const exists = box && typeof box !== "boolean" ? box.exists : 0;
