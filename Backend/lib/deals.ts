@@ -11,11 +11,12 @@ export const dealInclude = {
 type DealRow = Prisma.CouponDealGetPayload<{ include: typeof dealInclude }>;
 
 const code = z.string().trim().min(2, "Coupon code is too short.").max(40, "Coupon code is too long.");
+const note = z.string().trim().max(500);
 
 export const createDealSchema = z.object({
   listingId: z.string().trim().min(1, "Pick a product."),
   code,
-  note: z.string().trim().max(180).optional(),
+  note: note.optional(),
   ctaEnabled: z.boolean().optional(),
   ctaLabel: z.string().trim().max(40).optional(),
   ctaUrl: z.string().trim().max(500).optional(),
@@ -27,7 +28,7 @@ export const patchDealSchema = z
   .object({
     listingId: z.string().trim().min(1, "Pick a product."),
     code,
-    note: z.string().trim().max(180),
+    note,
     ctaEnabled: z.boolean(),
     ctaLabel: z.string().trim().max(40),
     ctaUrl: z.string().trim().max(500),
@@ -100,6 +101,30 @@ export function toAdminDeal(row: DealRow) {
       status: row.listing.status,
     },
   };
+}
+
+/** Creates, updates, or removes the coupon that was submitted with the listing. Other deals on the same product stay. */
+export async function syncListingCoupon(listingId: string, coupon: { code: string; note: string } | null) {
+  const existing = await db.couponDeal.findFirst({ where: { listingId, fromListing: true }, orderBy: { createdAt: "asc" } });
+  if (!coupon) {
+    if (existing) await db.couponDeal.delete({ where: { id: existing.id } });
+    return;
+  }
+  if (existing) {
+    await db.couponDeal.update({ where: { id: existing.id }, data: { code: coupon.code, note: coupon.note } });
+    return;
+  }
+  const last = await db.couponDeal.aggregate({ _max: { sortOrder: true } });
+  await db.couponDeal.create({
+    data: {
+      listingId,
+      code: coupon.code,
+      note: coupon.note,
+      fromListing: true,
+      active: true,
+      sortOrder: (last._max.sortOrder ?? -1) + 1,
+    },
+  });
 }
 
 /** Public card. The button uses the offer link only when that option is on. */

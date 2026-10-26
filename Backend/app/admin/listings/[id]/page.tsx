@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, Check, ExternalLink } from "lucide-react";
 import { useStore } from "@/components/store";
-import { Button } from "@/components/ui";
+import { Button, cn } from "@/components/ui";
 import { Card, ConfirmDialog, StatusPill, Switch, Thumb, api, formatDate, useApi } from "@/components/admin-kit";
 import { ListingEditor, type EditableListing } from "@/components/listing-editor";
+import { formatListingCopy } from "@/lib/listing-copy";
 
 type Listing = EditableListing & {
   id: string;
@@ -16,6 +17,8 @@ type Listing = EditableListing & {
   featured: boolean;
   sponsored: boolean;
   halalVerified: boolean;
+  socialPosted: boolean;
+  categories: { name: string; slug: string }[];
   voteCount: number;
   ownerId: string | null;
   createdAt: string;
@@ -32,7 +35,7 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  async function patch(change: Partial<Pick<Listing, "status" | "featured" | "sponsored" | "halalVerified">>) {
+  async function patch(change: Partial<Pick<Listing, "status" | "featured" | "sponsored" | "halalVerified" | "socialPosted">>) {
     try {
       setData(await api<Listing>(`/api/admin/listings/${id}`, { method: "PATCH", body: JSON.stringify(change) }));
       notify("Saved");
@@ -74,11 +77,39 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
             Submitted {formatDate(data.createdAt)} · {data.voteCount} upvotes · {data.ownerId ? "Owner can edit from their account" : "No account. Only admins can edit this listing."}
           </p>
         </div>
-        {data.status === "published" && (
-          <a href={`${SITE}/product/${data.slug}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border border-[#e6e8ef] bg-white px-3 py-2 text-sm font-medium text-[#344054] hover:border-[#0b6e4f]">
-            View on site <ExternalLink size={14} />
-          </a>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            tone="ghost"
+            className="px-3 py-2 text-sm"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(formatListingCopy(data));
+                notify("Copied");
+              } catch (problem) {
+                notify((problem as Error).message);
+              }
+            }}
+          >
+            Copy
+          </Button>
+          <button
+            type="button"
+            onClick={() => patch({ socialPosted: !data.socialPosted })}
+            className={cn(
+              "inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium",
+              data.socialPosted ? "bg-[#0b6e4f] text-white" : "border border-[#e6e8ef] bg-white text-[#344054] hover:bg-[#f5f6fa]",
+            )}
+          >
+            {data.socialPosted && <Check size={14} />}
+            Posted
+          </button>
+          {data.status === "published" && (
+            <a href={`${SITE}/product/${data.slug}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border border-[#e6e8ef] bg-white px-3 py-2 text-sm font-medium text-[#344054] hover:border-[#0b6e4f]">
+              View on site <ExternalLink size={14} />
+            </a>
+          )}
+        </div>
       </div>
 
       <Card title="Moderation" className="mt-6">

@@ -34,6 +34,7 @@ const SECTIONS = [
   { id: "description", label: "Description" },
   { id: "links", label: "Social links" },
   { id: "founders", label: "Founders" },
+  { id: "coupon", label: "Coupon code" },
 ];
 
 let keySeed = 0;
@@ -70,6 +71,9 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
   const [founders, setFounders] = useState<FounderDraft[]>(() =>
     existing?.founders.length ? existing.founders.map((founder) => ({ ...founder, key: newKey(), photoUrl: "", file: null, removePhoto: false })) : [emptyFounder()],
   );
+  const [couponOn, setCouponOn] = useState(Boolean(existing?.couponCode));
+  const [couponCode, setCouponCode] = useState(existing?.couponCode ?? "");
+  const [couponNote, setCouponNote] = useState(existing?.couponNote ?? "");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [contactName, setContactName] = useState("");
@@ -95,6 +99,8 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
     if (!editing && !logo && !logoUrl.trim()) return fail("Upload a logo or paste an image URL.", "media");
     if (draft.categoryIds.length + draft.proposedCategories.length === 0) return fail("Pick at least one category.", "company");
     if (textLength < 80) return fail("The description needs at least 80 characters.", "description");
+    if (couponOn && couponCode.trim().length < 2) return fail("Enter the coupon code.", "coupon");
+    if (couponOn && couponNote.trim().length < 10) return fail("Explain how and where to use this coupon code.", "coupon");
 
     const form = new FormData();
     form.set(
@@ -105,6 +111,9 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
         removeBanner: bannerUrl.trim() ? false : removeBanner,
         logoUrl,
         bannerUrl,
+        hasCoupon: couponOn,
+        couponCode: couponOn ? couponCode.trim() : "",
+        couponNote: couponOn ? couponNote.trim() : "",
         founders: founders
           .filter((founder) => founder.name.trim())
           .map(({ id, name, role, bio, socials, removePhoto, photoUrl }) => ({ id, name, role, bio, socials, removePhoto, photoUrl })),
@@ -145,7 +154,7 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
     document.getElementById(section)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  if (done) return <SubmittedNotice result={done} name={draft.name} />;
+  if (done) return <SubmittedNotice result={done} name={draft.name} coupon={couponOn} />;
 
   const signedIn = Boolean(account);
   const sections = editing ? SECTIONS : [...SECTIONS, { id: "account", label: "Your account" }];
@@ -318,8 +327,50 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
           )}
         </Section>
 
+        <Section
+          id="coupon"
+          index={6}
+          title="Coupon code"
+          description="Optional. Turn this on only if you have a code people can use. After the listing is approved, the product stays in the directory and the code also appears on the coupon page."
+        >
+          <button
+            type="button"
+            role="switch"
+            aria-checked={couponOn}
+            onClick={() => setCouponOn((on) => !on)}
+            className={cn("flex w-full items-center justify-between gap-4 rounded-xl border px-4 py-3 text-left transition", couponOn ? "border-brand bg-brand-soft" : "border-line hover:border-line-strong")}
+          >
+            <span>
+              <span className="block text-[15px] font-medium text-ink">I have a coupon code</span>
+              <span className="mt-0.5 block text-[13px] text-muted">Leave this off if the product does not have a code.</span>
+            </span>
+            <span className={cn("relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition", couponOn ? "bg-brand" : "bg-line-strong")} aria-hidden="true">
+              <span className={cn("inline-block h-5 w-5 rounded-full bg-white transition", couponOn ? "translate-x-[22px]" : "translate-x-0.5")} />
+            </span>
+          </button>
+          {couponOn && (
+            <>
+              <Field label="Coupon code" required hint="The exact code someone copies. Letters and numbers, up to 40 characters.">
+                <Input value={couponCode} onChange={setCouponCode} required minLength={2} maxLength={40} placeholder="AH10" className="font-mono tracking-wide" autoComplete="off" />
+              </Field>
+              <Field label="How and where to use it" required hint={`${couponNote.trim().length}/500. Say where to enter the code and what the person gets.`}>
+                <textarea
+                  value={couponNote}
+                  onChange={(event) => setCouponNote(event.target.value)}
+                  required
+                  minLength={10}
+                  maxLength={500}
+                  rows={4}
+                  placeholder="Enter AH10 at checkout on example.com. It takes 20% off the yearly plan. The code does not apply to monthly billing."
+                  className="w-full resize-y rounded-xl border border-line bg-bg px-3.5 py-3 text-[15px] leading-relaxed text-ink outline-none transition placeholder:text-muted focus:border-brand"
+                />
+              </Field>
+            </>
+          )}
+        </Section>
+
         {!editing && (
-          <Section id="account" index={6} title="Your account" description="We email you when your listing goes live.">
+          <Section id="account" index={7} title="Your account" description="We email you when your listing goes live.">
             {signedIn ? (
               <p className="flex items-center gap-2 rounded-xl border border-line bg-band px-4 py-3 text-[14px] text-ink-soft">
                 <Lock size={15} /> Submitting as <span className="font-semibold text-ink">{account!.email}</span>. You can edit this listing from your account.
@@ -382,7 +433,7 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
   );
 }
 
-function SubmittedNotice({ result, name }: { result: { slug: string; hasAccount: boolean; createdAccount: boolean }; name: string }) {
+function SubmittedNotice({ result, name, coupon }: { result: { slug: string; hasAccount: boolean; createdAccount: boolean }; name: string; coupon: boolean }) {
   return (
     <div className="mx-auto max-w-xl rounded-3xl border border-line bg-surface p-8 text-center sm:p-10">
       <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-brand text-white">
@@ -391,6 +442,7 @@ function SubmittedNotice({ result, name }: { result: { slug: string; hasAccount:
       <h2 className="mt-5 text-[26px] font-semibold tracking-[-0.02em] text-ink">{name} is in the review queue</h2>
       <p className="mt-3 text-[15px] leading-relaxed text-muted">
         We check every product by hand, usually within a few days. {result.hasAccount ? "You can follow its status and edit it from your account." : "Because you submitted without a password, our team will make any changes for you."}
+        {coupon && " Once it is published, the product stays in the directory and the coupon code shows on the coupon page."}
       </p>
       <div className="mt-7 flex flex-wrap justify-center gap-3">
         {result.hasAccount && (

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { HttpError, ok, readJson, route } from "@/lib/http";
 import { requireAdmin } from "@/lib/auth";
 import { detailInclude, parseListingForm, prepareListing, revalidate, toEditable, writeRelations } from "@/lib/directory";
+import { syncListingCoupon } from "@/lib/deals";
 import { removeUpload } from "@/lib/upload";
 import { recordActivity } from "@/lib/activity";
 import { alert } from "@/lib/telegram";
@@ -17,7 +18,7 @@ async function load(id: string) {
 
 export const GET = route<Context>(async (_request, { params }) => {
   await requireAdmin();
-  return ok(toEditable(await load((await params).id)));
+  return ok(present(await load((await params).id)));
 });
 
 const flagsSchema = z.object({
@@ -25,7 +26,12 @@ const flagsSchema = z.object({
   featured: z.boolean().optional(),
   sponsored: z.boolean().optional(),
   halalVerified: z.boolean().optional(),
+  socialPosted: z.boolean().optional(),
 });
+
+function present(row: Awaited<ReturnType<typeof load>>) {
+  return { ...toEditable(row), socialPosted: row.socialPosted };
+}
 
 /** Moderation flags. Publishing for the first time stamps publishedAt. */
 export const PATCH = route<Context>(async (request, { params }) => {
@@ -39,7 +45,7 @@ export const PATCH = route<Context>(async (request, { params }) => {
     alert("listing.published", `${existing.name} is now live.`);
   }
   revalidate("listings", `listing:${existing.slug}`, "ads", "coupon-codes");
-  return ok(toEditable(await load(existing.id)));
+  return ok(present(await load(existing.id)));
 });
 
 /** Full content edit by the admin, used for listings submitted without an account. */
@@ -55,8 +61,9 @@ export const PUT = route<Context>(async (request, { params }) => {
     data: { ...prepared.columns, ...(contactEmail.success ? { contactEmail: contactEmail.data } : {}) },
   });
   await writeRelations(existing.id, prepared);
+  await syncListingCoupon(existing.id, prepared.coupon);
   revalidate("listings", `listing:${existing.slug}`, "coupon-codes");
-  return ok(toEditable(await load(existing.id)));
+  return ok(present(await load(existing.id)));
 });
 
 /** Removes the listing and everything that belongs to it. File cleanup must not undo a successful delete. */

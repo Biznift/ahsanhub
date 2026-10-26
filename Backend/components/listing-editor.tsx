@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { Plus, Trash2, X } from "lucide-react";
 import { Button, Field, SelectInput, TextInput, cn, controlClass } from "@/components/ui";
 import { RichText } from "@/components/rich-text";
-import { Card, useApi } from "@/components/admin-kit";
+import { Card, Switch, useApi } from "@/components/admin-kit";
 import { KIND_LABEL, LISTING_KINDS, type ListingKind } from "@/lib/kinds";
 
 export const SOCIALS = [
@@ -37,6 +37,8 @@ export type EditableListing = {
   categoryIds: string[];
   founders: { id: string; name: string; role: string; bio: string; photo: string | null; socials: Record<string, string> }[];
   alternatives?: { id: string; name: string; slug: string }[];
+  couponCode?: string;
+  couponNote?: string;
 };
 
 type FounderDraft = { id?: string; name: string; role: string; bio: string; photo: string | null; photoUrl: string; socials: Record<string, string>; file: File | null; removePhoto: boolean };
@@ -50,6 +52,9 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
   const [bannerUrl, setBannerUrl] = useState("");
   const [removeBanner, setRemoveBanner] = useState(false);
   const [founders, setFounders] = useState<FounderDraft[]>(listing.founders.map((item) => ({ ...item, photoUrl: "", file: null, removePhoto: false })));
+  const [couponOn, setCouponOn] = useState(Boolean(listing.couponCode));
+  const [couponCode, setCouponCode] = useState(listing.couponCode ?? "");
+  const [couponNote, setCouponNote] = useState(listing.couponNote ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -80,6 +85,9 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
         removeBanner: bannerUrl.trim() ? false : removeBanner,
         logoUrl,
         bannerUrl,
+        hasCoupon: couponOn,
+        couponCode: couponOn ? couponCode.trim() : "",
+        couponNote: couponOn ? couponNote.trim() : "",
         founders: founders.map(({ id, name, role, bio, socials, removePhoto, photoUrl }) => ({ id, name, role, bio, socials, removePhoto, photoUrl })),
       }),
     );
@@ -324,6 +332,31 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
             </div>
           ))}
         </div>
+      </Card>
+
+      <Card title="Coupon code" description="Optional. Turn this on when the product has a code. After the listing is published, it stays in the directory and the code also shows on the coupon page.">
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-sm font-medium text-[#1d2939]">This listing includes a coupon code</p>
+          <Switch label="Coupon code" checked={couponOn} onChange={setCouponOn} />
+        </div>
+        {couponOn && (
+          <div className="mt-4 grid gap-3">
+            <Field label="Coupon code">
+              <TextInput value={couponCode} maxLength={40} onChange={(event) => setCouponCode(event.target.value)} required className="font-mono" placeholder="AH10" />
+            </Field>
+            <Field label="How and where to use it">
+              <textarea
+                value={couponNote}
+                rows={4}
+                maxLength={500}
+                required
+                onChange={(event) => setCouponNote(event.target.value)}
+                placeholder="Where to enter the code, and what the person gets."
+                className={controlClass}
+              />
+            </Field>
+          </div>
+        )}
       </Card>
 
       {error && <p className="text-sm text-[var(--danger)]">{error}</p>}

@@ -56,7 +56,7 @@ export const MODULES: KitModule[] = [
       { method: "PUT", path: "/api/admin/listings/:id", summary: "Replace content. Multipart: data JSON, logo, banner, founderPhoto:n" },
       { method: "DELETE", path: "/api/admin/listings/:id", summary: "Delete a listing and its files" },
       { method: "GET", path: "/api/public/listings", summary: "Published listings. Query: q, category, pricing, sort, featured, page, limit" },
-      { method: "POST", path: "/api/public/listings", summary: "Submit a listing. Multipart: data, email, password, logo, banner, founderPhoto:n" },
+      { method: "POST", path: "/api/public/listings", summary: "Submit a listing. Multipart: data (optional coupon code and usage note), email, password, logo, banner, founderPhoto:n" },
       { method: "GET", path: "/api/public/listings/:slug", summary: "One published listing with rating and related" },
       { method: "POST", path: "/api/public/listings/:slug/vote", summary: "Toggle the visitor's upvote. No account." },
       { method: "GET", path: "/api/public/votes", summary: "Which listings this visitor upvoted. Query: ids" },

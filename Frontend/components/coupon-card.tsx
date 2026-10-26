@@ -81,7 +81,7 @@ function CouponCard({ deal, code, onUnlock }: { deal: CouponDeal; code: string |
         </div>
       </div>
       <p className="mt-4 line-clamp-2 text-[14px] leading-[1.55] text-muted">{listing.overview}</p>
-      {deal.note && <p className="mt-2 text-[14px] font-medium leading-snug text-ink">{deal.note}</p>}
+      {deal.note && <p className="mt-3 whitespace-pre-line text-[14px] leading-relaxed text-ink-soft">{deal.note}</p>}
       <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-dashed border-brand-line bg-brand-soft px-3 py-2.5">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-text">Coupon code</p>

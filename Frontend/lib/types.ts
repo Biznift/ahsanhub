@@ -39,6 +39,7 @@ export type ListingDetail = ListingCard & {
   halalNote: string;
   socials: Socials;
   founders: Founder[];
+  coupon: { note: string } | null;
   updatedAt: string;
   rating: Rating;
   related: ListingCard[];
@@ -48,6 +49,8 @@ export type EditableListing = Omit<ListingDetail, "related" | "rating"> & {
   status: "pending" | "published" | "rejected";
   contactEmail: string;
   categoryIds: string[];
+  couponCode: string;
+  couponNote: string;
 };
 
 export type Category = { id: string; name: string; slug: string; description: string; count: number; kind: ListingKind; status?: "approved" | "pending" | "rejected" };

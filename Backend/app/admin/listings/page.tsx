@@ -1,15 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useState } from "react";
+import { Suspense, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ExternalLink } from "lucide-react";
+import { Check, ExternalLink } from "lucide-react";
 import { moduleBySlug } from "@/lib/catalog";
 import { ModuleFrame } from "@/components/frame";
 import { useStore } from "@/components/store";
 import { Button, TextInput, cn } from "@/components/ui";
 import { ConfirmDialog, Empty, StatusPill, Switch, Thumb, api, formatDate, useApi } from "@/components/admin-kit";
 import { KIND_LABEL, type ListingKind } from "@/lib/kinds";
+import { formatListingCopy, type ListingCopySource } from "@/lib/listing-copy";
 
 type AdminListingRow = {
   id: string;
@@ -22,6 +23,7 @@ type AdminListingRow = {
   featured: boolean;
   sponsored: boolean;
   halalVerified: boolean;
+  socialPosted: boolean;
   voteCount: number;
   website: string;
   contactEmail: string;
@@ -46,6 +48,15 @@ export default function ListingsPage() {
   );
 }
 
+function Flag({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs text-[#667085]">
+      {children}
+      {label}
+    </span>
+  );
+}
+
 function ListingsScreen() {
   const module = moduleBySlug("listings");
   const router = useRouter();
@@ -55,13 +66,14 @@ function ListingsScreen() {
   const [submitted, setSubmitted] = useState("");
   const [pendingDelete, setPendingDelete] = useState<AdminListingRow | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [copyingId, setCopyingId] = useState<string | null>(null);
   const { notify } = useStore();
   const search = new URLSearchParams();
   if (status) search.set("status", status);
   if (submitted) search.set("q", submitted);
   const { data, error, loading, setData } = useApi<{ items: AdminListingRow[] }>(`/api/admin/listings?${search}`);
 
-  async function patch(row: AdminListingRow, change: Partial<Pick<AdminListingRow, "status" | "featured" | "sponsored" | "halalVerified">>) {
+  async function patch(row: AdminListingRow, change: Partial<Pick<AdminListingRow, "status" | "featured" | "sponsored" | "halalVerified" | "socialPosted">>) {
     try {
       await api(`/api/admin/listings/${row.id}`, { method: "PATCH", body: JSON.stringify(change) });
       setData((current) =>
@@ -72,8 +84,22 @@ function ListingsScreen() {
         },
       );
       if (change.status) notify(`${row.name} is ${change.status}`);
+      if (change.socialPosted !== undefined) notify(change.socialPosted ? "Posted" : "Cleared");
     } catch (problem) {
       notify((problem as Error).message);
+    }
+  }
+
+  async function copyDetails(row: AdminListingRow) {
+    setCopyingId(row.id);
+    try {
+      const full = await api<ListingCopySource>(`/api/admin/listings/${row.id}`);
+      await navigator.clipboard.writeText(formatListingCopy(full));
+      notify("Copied");
+    } catch (problem) {
+      notify((problem as Error).message);
+    } finally {
+      setCopyingId(null);
     }
   }
 
@@ -130,87 +156,82 @@ function ListingsScreen() {
       {!loading && data?.items.length === 0 && <div className="mt-4"><Empty>No listings here.</Empty></div>}
 
       {data && data.items.length > 0 && (
-        <div className="mt-4 overflow-x-auto rounded-xl border border-[#e6e8ef] bg-white">
-          <table className="w-full min-w-[980px] text-left text-sm">
-            <thead className="border-b border-[#e6e8ef] text-xs uppercase tracking-wide text-[#667085]">
-              <tr>
-                <th className="px-4 py-3 font-medium">Listing</th>
-                <th className="px-4 py-3 font-medium">Contact</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-3 py-3 text-center font-medium">Featured</th>
-                <th className="px-3 py-3 text-center font-medium">Sponsored</th>
-                <th className="px-3 py-3 text-center font-medium">Halal</th>
-                <th className="px-4 py-3 font-medium" />
-              </tr>
-            </thead>
-            <tbody>
-              {data.items.map((row) => {
-                const canSponsor = row.pricing === "free" || row.pricing === "freemium";
-                return (
-                  <tr key={row.id} className="border-t border-[#eef0f4] align-middle">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <Thumb src={row.logo} name={row.name} />
-                        <div className="min-w-0">
-                          <Link href={`/admin/listings/${row.id}`} className="font-semibold text-[#1d2939] hover:text-[#0b6e4f]">
-                            {row.name}
-                          </Link>
-                          <p className="max-w-[320px] truncate text-xs text-[#667085]">{row.categories.map((item) => item.name).join(", ")}</p>
-                          <p className="text-xs text-[#98a2b3]">
-                            {KIND_LABEL[row.kind]} · {formatDate(row.createdAt)} · {row.pricing.replace("_", " ")} · {row.voteCount} votes
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="text-[#344054]">{row.ownerEmail ?? row.contactEmail}</p>
-                      <p className="text-xs text-[#98a2b3]">{row.ownerEmail ? "Owner account" : "No account"}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusPill status={row.status} />
-                    </td>
-                    <td className="px-3 py-3 text-center">
+        <div className="mt-4 overflow-hidden rounded-xl border border-[#e6e8ef] bg-white">
+          {data.items.map((row) => {
+            const canSponsor = row.pricing === "free" || row.pricing === "freemium";
+            return (
+              <article key={row.id} className="border-t border-[#eef0f4] px-4 py-3 first:border-t-0">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+                  <div className="flex min-w-0 flex-1 basis-[240px] items-center gap-3">
+                    <Thumb src={row.logo} name={row.name} />
+                    <div className="min-w-0">
+                      <Link href={`/admin/listings/${row.id}`} className="font-semibold text-[#1d2939] hover:text-[#0b6e4f]">
+                        {row.name}
+                      </Link>
+                      <p className="truncate text-xs text-[#667085]">{row.categories.map((item) => item.name).join(", ")}</p>
+                      <p className="truncate text-xs text-[#98a2b3]">
+                        {KIND_LABEL[row.kind]} · {formatDate(row.createdAt)} · {row.pricing.replace("_", " ")} · {row.voteCount} votes
+                        {row.socialPosted && <span className="font-medium text-[#0b6e4f]"> · Posted</span>}
+                      </p>
+                      <p className="truncate text-xs text-[#344054]">{row.ownerEmail ?? row.contactEmail}</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                    <StatusPill status={row.status} />
+                    <Flag label="Featured">
                       <Switch label="Featured" checked={row.featured} onChange={(featured) => patch(row, { featured })} />
-                    </td>
-                    <td className="px-3 py-3 text-center">
+                    </Flag>
+                    <Flag label="Sponsored">
                       <Switch
                         label={canSponsor ? "Sponsored" : "Only free or freemium listings can be sponsored"}
                         checked={row.sponsored}
                         disabled={!canSponsor && !row.sponsored}
                         onChange={(sponsored) => patch(row, { sponsored })}
                       />
-                    </td>
-                    <td className="px-3 py-3 text-center">
+                    </Flag>
+                    <Flag label="Halal">
                       <Switch label="Halal verified" checked={row.halalVerified} onChange={(halalVerified) => patch(row, { halalVerified })} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1">
-                        {row.status !== "published" && (
-                          <Button type="button" className="px-3 py-1.5 text-sm" onClick={() => patch(row, { status: "published" })}>
-                            Approve
-                          </Button>
-                        )}
-                        {row.status !== "rejected" && (
-                          <Button type="button" tone="danger" className="px-3 py-1.5 text-sm" onClick={() => patch(row, { status: "rejected" })}>
-                            Reject
-                          </Button>
-                        )}
-                        <a href={row.website} target="_blank" rel="noreferrer" className="rounded-md p-2 text-[#667085] hover:bg-[#f5f6fa]" title="Open website">
-                          <ExternalLink size={15} />
-                        </a>
-                        <Link href={`/admin/listings/${row.id}`} className="rounded-md px-2 py-1.5 text-sm font-medium text-[#0b6e4f] hover:bg-[#e7f3ee]">
-                          Edit
-                        </Link>
-                        <Button type="button" tone="danger" className="px-3 py-1.5 text-sm" onClick={() => setPendingDelete(row)}>
-                          Delete
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    </Flag>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-1">
+                  <Button type="button" tone="ghost" className="px-2.5 py-1.5 text-sm" disabled={copyingId === row.id} onClick={() => copyDetails(row)}>
+                    Copy
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => patch(row, { socialPosted: !row.socialPosted })}
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm font-medium",
+                      row.socialPosted ? "bg-[#0b6e4f] text-white" : "border border-[#e6e8ef] bg-white text-[#344054] hover:bg-[#f5f6fa]",
+                    )}
+                  >
+                    {row.socialPosted && <Check size={14} />}
+                    Posted
+                  </button>
+                  {row.status !== "published" && (
+                    <Button type="button" className="px-2.5 py-1.5 text-sm" onClick={() => patch(row, { status: "published" })}>
+                      Approve
+                    </Button>
+                  )}
+                  {row.status !== "rejected" && (
+                    <Button type="button" tone="danger" className="px-2.5 py-1.5 text-sm" onClick={() => patch(row, { status: "rejected" })}>
+                      Reject
+                    </Button>
+                  )}
+                  <a href={row.website} target="_blank" rel="noreferrer" className="rounded-md p-2 text-[#667085] hover:bg-[#f5f6fa]" title="Open website">
+                    <ExternalLink size={15} />
+                  </a>
+                  <Link href={`/admin/listings/${row.id}`} className="rounded-md px-2 py-1.5 text-sm font-medium text-[#0b6e4f] hover:bg-[#e7f3ee]">
+                    Edit
+                  </Link>
+                  <Button type="button" tone="danger" className="px-2.5 py-1.5 text-sm" onClick={() => setPendingDelete(row)}>
+                    Delete
+                  </Button>
+                </div>
+              </article>
+            );
+          })}
         </div>
       )}
 

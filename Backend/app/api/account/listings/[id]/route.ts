@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { HttpError, ok, route } from "@/lib/http";
 import { requireUser } from "@/lib/auth";
 import { detailInclude, parseListingForm, prepareListing, revalidate, toEditable, writeRelations } from "@/lib/directory";
+import { syncListingCoupon } from "@/lib/deals";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -28,6 +29,7 @@ export const PATCH = route<Context>(async (request, { params }) => {
     data: { ...prepared.columns, ...(returnedToReview ? { status: "pending" as const } : {}) },
   });
   await writeRelations(existing.id, prepared);
+  await syncListingCoupon(existing.id, prepared.coupon);
   revalidate("listings", `listing:${existing.slug}`, "ads", "coupon-codes");
   const row = await db.listing.findUniqueOrThrow({ where: { id: existing.id }, include: detailInclude });
   return ok({ ...toEditable(row), returnedToReview });

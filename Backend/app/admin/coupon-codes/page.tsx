@@ -210,12 +210,19 @@ export default function CouponCodesPage() {
             </div>
           )}
 
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3">
             <Field label="Coupon code">
               <TextInput value={form.code} onChange={(event) => setField("code", event.target.value)} required maxLength={40} placeholder="AH10" className="font-mono" />
             </Field>
-            <Field label="Deal note (optional)">
-              <TextInput value={form.note} onChange={(event) => setField("note", event.target.value)} maxLength={180} placeholder="20% off the annual plan" />
+            <Field label="How and where to use it">
+              <textarea
+                value={form.note}
+                onChange={(event) => setField("note", event.target.value)}
+                maxLength={500}
+                rows={3}
+                placeholder="Enter the code at checkout. Say which plan it covers."
+                className="w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 text-base text-[var(--text)] outline-none ring-[var(--ink)] focus:ring-2"
+              />
             </Field>
           </div>
 

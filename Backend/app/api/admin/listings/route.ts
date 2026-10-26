@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { ok, route } from "@/lib/http";
 import { requireAdmin } from "@/lib/auth";
 import { cardInclude, detailInclude, parseListingForm, prepareListing, revalidate, toCard, toEditable, writeRelations } from "@/lib/directory";
+import { syncListingCoupon } from "@/lib/deals";
 import { uniqueSlug } from "@/lib/slug";
 import { recordActivity } from "@/lib/activity";
 import { alert } from "@/lib/telegram";
@@ -38,6 +39,7 @@ export const GET = route(async (request) => {
       website: row.website,
       contactEmail: row.contactEmail,
       ownerEmail: row.owner?.email ?? null,
+      socialPosted: row.socialPosted,
       createdAt: row.createdAt.toISOString(),
     })),
   });
@@ -55,9 +57,10 @@ export const POST = route(async (request) => {
     data: { ...prepared.columns, slug, contactEmail, status: "published", publishedAt: new Date() },
   });
   await writeRelations(listing.id, prepared);
+  await syncListingCoupon(listing.id, prepared.coupon);
   await recordActivity("listing", `${input.name} was just published`);
   alert("listing.published", `${input.name} was added by an admin and is now live.`);
   revalidate("listings", `listing:${slug}`, "categories", "ads", "coupon-codes");
   const row = await db.listing.findUniqueOrThrow({ where: { id: listing.id }, include: detailInclude });
-  return ok(toEditable(row), { status: 201 });
+  return ok({ ...toEditable(row), socialPosted: row.socialPosted }, { status: 201 });
 });
