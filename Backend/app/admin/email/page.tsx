@@ -99,6 +99,7 @@ const EVENTS = [
   { key: "order_status", label: "Order status updates", description: "Sent when you change an order status." },
   { key: "order_message", label: "Your replies", description: "Sent when you reply to a customer on their order." },
   { key: "feedback_reply", label: "Feedback replies", description: "Sent when you reply to a feedback thread." },
+  { key: "listing_rejected", label: "Listing rejected", description: "Sent to the owner and the submitter when you reject a listing. Includes the reason and any image. The note still shows on their account when this is off." },
 ];
 
 type SavedEmail = {

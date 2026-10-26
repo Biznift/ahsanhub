@@ -27,6 +27,8 @@ const snapshotSchema = z.object({
   mails: z.array(z.record(z.string(), z.unknown())),
   socialEvents: z.array(z.record(z.string(), z.unknown())),
   couponDeals: z.array(z.record(z.string(), z.unknown())).optional().default([]),
+  promoPins: z.array(z.record(z.string(), z.unknown())).optional().default([]),
+  listingMetrics: z.array(z.record(z.string(), z.unknown())).optional().default([]),
 });
 
 function fileFor(id: string) {
@@ -55,6 +57,8 @@ export async function createBackup(automatic = false) {
     mails,
     socialEvents,
     couponDeals,
+    promoPins,
+    listingMetrics,
   ] = await Promise.all([
     db.user.findMany(),
     db.category.findMany(),
@@ -75,6 +79,8 @@ export async function createBackup(automatic = false) {
     db.mail.findMany(),
     db.socialEvent.findMany(),
     db.couponDeal.findMany(),
+    db.promoPin.findMany(),
+    db.listingMetric.findMany(),
   ]);
   const body = JSON.stringify({
     createdAt: new Date().toISOString(),
@@ -97,6 +103,8 @@ export async function createBackup(automatic = false) {
     mails,
     socialEvents,
     couponDeals,
+    promoPins,
+    listingMetrics,
   });
   const row = await db.backupFile.create({
     data: { name: `backup-${new Date().toISOString().replace(/[:.]/g, "-")}.json`, size: Buffer.byteLength(body), automatic },
@@ -135,7 +143,7 @@ export async function restoreBackup(id: string, adminId: string) {
 
   const dates = (row: Record<string, unknown>) => {
     const next = { ...row };
-    for (const key of ["createdAt", "updatedAt", "publishedAt", "sentAt", "occurredAt", "expiresAt", "lastMessageAt"]) {
+    for (const key of ["createdAt", "updatedAt", "publishedAt", "sentAt", "occurredAt", "expiresAt", "lastMessageAt", "day"]) {
       if (typeof next[key] === "string") next[key] = new Date(next[key] as string);
     }
     return next;
@@ -143,6 +151,9 @@ export async function restoreBackup(id: string, adminId: string) {
 
   await db.$transaction(async (tx) => {
     await tx.couponDeal.deleteMany();
+    await tx.listingMetric.deleteMany();
+    await tx.listingEvent.deleteMany();
+    await tx.promoPin.deleteMany();
     await tx.loginToken.deleteMany();
     await tx.mail.deleteMany();
     await tx.supportMessage.deleteMany();
@@ -184,5 +195,9 @@ export async function restoreBackup(id: string, adminId: string) {
     const listingIds = new Set(snapshot.listings.map((row) => String(row.id ?? "")));
     const couponDeals = snapshot.couponDeals.filter((row) => listingIds.has(String(row.listingId ?? "")));
     if (couponDeals.length) await tx.couponDeal.createMany({ data: couponDeals.map(dates) as never });
+    const promoPins = snapshot.promoPins.filter((row) => listingIds.has(String(row.listingId ?? "")));
+    if (promoPins.length) await tx.promoPin.createMany({ data: promoPins.map(dates) as never });
+    const listingMetrics = snapshot.listingMetrics.filter((row) => listingIds.has(String(row.listingId ?? "")));
+    if (listingMetrics.length) await tx.listingMetric.createMany({ data: listingMetrics.map(dates) as never });
   });
 }

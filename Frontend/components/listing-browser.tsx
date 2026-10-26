@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { LayoutGrid, List, Search, X } from "lucide-react";
-import type { Category, ListingCard, Page } from "@/lib/types";
+import type { Category, ListingCard, Page, PromoListing } from "@/lib/types";
 import { KIND_LABEL, LISTING_KINDS, PRICING_LABEL, categoryKind, cn } from "@/lib/format";
 import type { ListingKind } from "@/lib/types";
 import { ProductCard, ProductRow } from "@/components/product-card";
+import { FeaturedPlacement } from "@/components/featured-placement";
 
 export type BrowseParams = { q?: string; category?: string; kind?: string; pricing?: string; sort?: string; page?: string; view?: string; alternative?: string };
 
@@ -33,7 +34,7 @@ export function ListingBrowser({
   params,
   results,
   categories,
-  sponsored,
+  promos,
   lockCategory = false,
   alternativeName,
 }: {
@@ -41,7 +42,7 @@ export function ListingBrowser({
   params: BrowseParams;
   results: Page<ListingCard>;
   categories: Category[];
-  sponsored: ListingCard[];
+  promos: PromoListing[];
   lockCategory?: boolean;
   alternativeName?: string;
 }) {
@@ -49,11 +50,17 @@ export function ListingBrowser({
   const listView = params.view !== "grid";
   const viewParams = { ...params, view: listView ? undefined : "grid" };
   const filtered = Boolean(params.q || params.pricing || params.alternative || (!lockCategory && params.category));
-  const cells: { listing: ListingCard; sponsored: boolean }[] = [];
+  const organicIds = new Set(results.items.map((item) => item.id));
+  const promoQueue = promos.filter((item) => !organicIds.has(item.id));
+  let promoIndex = 0;
+  const cells: { listing: ListingCard | PromoListing; promo: boolean }[] = [];
   results.items.forEach((listing, index) => {
-    cells.push({ listing, sponsored: false });
-    const ad = sponsored[Math.floor(index / 8) % Math.max(1, sponsored.length)];
-    if ((index + 1) % 8 === 0 && ad && index < results.items.length - 1) cells.push({ listing: ad, sponsored: true });
+    cells.push({ listing, promo: false });
+    const nextPromo = promoQueue[promoIndex];
+    if ((index + 1) % 8 === 0 && nextPromo && index < results.items.length - 1) {
+      cells.push({ listing: nextPromo, promo: true });
+      promoIndex += 1;
+    }
   });
 
   return (
@@ -165,15 +172,23 @@ export function ListingBrowser({
           </div>
         ) : listView ? (
           <div className="rounded-2xl border border-line bg-surface p-2">
-            {cells.map((cell, index) => (
-              <ProductRow key={`${cell.listing.id}-${index}`} listing={cell.listing} showSponsored={cell.sponsored} wrapOverview />
-            ))}
+            {cells.map((cell, index) =>
+              cell.promo ? (
+                <FeaturedPlacement key={`${cell.listing.id}-${index}`} listing={cell.listing as PromoListing} layout="list" />
+              ) : (
+                <ProductRow key={`${cell.listing.id}-${index}`} listing={cell.listing} wrapOverview />
+              ),
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {cells.map((cell, index) => (
-              <ProductCard key={`${cell.listing.id}-${index}`} listing={cell.listing} showSponsored={cell.sponsored} />
-            ))}
+            {cells.map((cell, index) =>
+              cell.promo ? (
+                <FeaturedPlacement key={`${cell.listing.id}-${index}`} listing={cell.listing as PromoListing} layout="grid" />
+              ) : (
+                <ProductCard key={`${cell.listing.id}-${index}`} listing={cell.listing} />
+              ),
+            )}
           </div>
         )}
 

@@ -14,7 +14,7 @@ type Stats = {
   owners: number;
   votesThisWeek: number;
   newThisWeek: number;
-  activeAds: number;
+  featuredLive: number;
   latest: { id: string; name: string; slug: string; status: string; logo: string | null; createdAt: string; ownerId: string | null }[];
 };
 
@@ -31,7 +31,7 @@ export default function DashboardPage() {
         { label: "Upvotes, last 7 days", value: data.votesThisWeek },
         { label: "Submissions, last 7 days", value: data.newThisWeek },
         { label: "Rejected", value: data.rejected, href: "/admin/listings?status=rejected" },
-        { label: "Active ad creatives", value: data.activeAds, href: "/admin/ads" },
+        { label: "Featured in rotation", value: data.featuredLive, href: "/admin/ads" },
       ]
     : [];
 

@@ -21,6 +21,7 @@ export type ListingCard = {
   sponsored: boolean;
   halalVerified: boolean;
   voteCount: number;
+  viewCount: number;
   kind: ListingKind;
   categories: CategoryRef[];
   alternatives: AlternativeRef[];
@@ -51,6 +52,8 @@ export type EditableListing = Omit<ListingDetail, "related" | "rating"> & {
   categoryIds: string[];
   couponCode: string;
   couponNote: string;
+  rejectNote: string;
+  rejectImage: string | null;
 };
 
 export type Category = { id: string; name: string; slug: string; description: string; count: number; kind: ListingKind; status?: "approved" | "pending" | "rejected" };
@@ -68,14 +71,9 @@ export type CouponDeal = {
   listing: ListingCard;
 };
 
-export type AdCreative = { id: string; title: string; kind: "image" | "gif" | "video"; file: string; url: string };
+export type PromoOffer = { dealId: string; label: string };
 
-export type AdPlacementData = {
-  placement: string;
-  size: { label: string; width: number; height: number } | null;
-  ads: AdCreative[];
-  sponsored: ListingCard[];
-};
+export type PromoListing = ListingCard & { offer: PromoOffer | null };
 
 export type Site = {
   name: string;

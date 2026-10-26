@@ -40,6 +40,7 @@ export type MailAccount = {
 type MailHeaders = {
   inReplyTo?: string;
   references?: string;
+  html?: string;
 };
 
 /** App passwords are shown in groups of four. Servers expect them without spaces. */
@@ -196,6 +197,7 @@ async function sendThrough(account: MailAccount, to: string, subject: string, te
       to,
       subject,
       text,
+      html: headers?.html,
       replyTo: account.fromEmail,
       inReplyTo: headers?.inReplyTo,
       references: headers?.references,
@@ -217,6 +219,7 @@ async function sendWithAccount(account: MailAccount, to: string, subject: string
       to,
       subject,
       text,
+      html: headers?.html,
       inReplyTo: headers?.inReplyTo,
       references: headers?.references,
     });

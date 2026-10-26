@@ -2,16 +2,16 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowUpRight, Check, Copy } from "lucide-react";
 import type { CouponDeal } from "@/lib/types";
-import { hostOf } from "@/lib/format";
+import { hostOf, compactCount } from "@/lib/format";
 import { ListingLogo } from "@/components/listing-logo";
 import { KindBadge, PricingBadge } from "@/components/badges";
-import { CouponAccess } from "@/components/coupon-access";
 
 export function CouponGrid({ items }: { items: CouponDeal[] }) {
+  const router = useRouter();
   const [codes, setCodes] = useState<Record<string, string>>({});
-  const [open, setOpen] = useState(false);
 
   async function loadCodes() {
     const response = await fetch("/api/account/coupon-codes", { cache: "no-store" });
@@ -33,18 +33,17 @@ export function CouponGrid({ items }: { items: CouponDeal[] }) {
     <>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {items.map((deal) => (
-          <CouponCard key={deal.id} deal={deal} code={codes[deal.id] ?? null} onUnlock={() => setOpen(true)} />
+          <CouponCard
+            key={deal.id}
+            deal={deal}
+            code={codes[deal.id] ?? null}
+            onUnlock={() => {
+              const here = window.location.pathname + window.location.search;
+              router.push(`/signup?next=${encodeURIComponent(here)}`);
+            }}
+          />
         ))}
       </div>
-      <CouponAccess
-        open={open}
-        onOpenChange={setOpen}
-        onReady={() => {
-          loadCodes()
-            .catch(() => setCodes({}))
-            .finally(() => setOpen(false));
-        }}
-      />
     </>
   );
 }
@@ -77,6 +76,7 @@ function CouponCard({ deal, code, onUnlock }: { deal: CouponDeal; code: string |
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <KindBadge kind={listing.kind} />
             <PricingBadge pricing={listing.pricing} />
+            <span className="text-[12px] font-medium tabular-nums text-muted">{compactCount(listing.viewCount)} views</span>
           </div>
         </div>
       </div>

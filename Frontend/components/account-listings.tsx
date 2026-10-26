@@ -6,14 +6,23 @@ import { useRouter } from "next/navigation";
 import { LogOut, Pencil, Plus } from "lucide-react";
 import type { Account, ListingCard } from "@/lib/types";
 import { ListingLogo } from "@/components/listing-logo";
-import { cn, formatDate } from "@/lib/format";
+import { RejectionNote } from "@/components/rejection-note";
+import { cn, compactCount, formatDate } from "@/lib/format";
 
-type OwnListing = ListingCard & { status: "pending" | "published" | "rejected" };
+type OwnListing = ListingCard & {
+  status: "pending" | "published" | "rejected";
+  rejectNote: string;
+  rejectImage: string | null;
+  promoImpressions: number;
+  promoClicks: number;
+  couponClicks: number;
+  week: { views: number; impressions: number; clicks: number; couponClicks: number };
+};
 
 const STATUS: Record<OwnListing["status"], { label: string; className: string; hint: string }> = {
   pending: { label: "In review", className: "bg-warn-soft text-warn-text", hint: "We are reviewing it." },
   published: { label: "Live", className: "bg-brand-soft text-brand-text", hint: "Visible on Ahsan Hub." },
-  rejected: { label: "Not approved", className: "bg-danger-soft text-danger", hint: "Email us if you want to know why." },
+  rejected: { label: "Not approved", className: "bg-danger-soft text-danger", hint: "See the note below, then edit and send it again." },
 };
 
 export function AccountListings() {
@@ -72,26 +81,32 @@ export function AccountListings() {
           {items.map((item) => {
             const status = STATUS[item.status];
             return (
-              <li key={item.id} className="flex flex-wrap items-center gap-4 p-4 sm:p-5">
-                <ListingLogo src={item.logo} name={item.name} size={48} />
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-[16px] font-semibold text-ink">{item.name}</p>
-                    <span className={cn("inline-flex h-6 items-center rounded-md px-2 text-[12px] font-semibold", status.className)}>{status.label}</span>
+              <li key={item.id} className="p-4 sm:p-5">
+                <div className="flex flex-wrap items-center gap-4">
+                  <ListingLogo src={item.logo} name={item.name} size={48} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-[16px] font-semibold text-ink">{item.name}</p>
+                      <span className={cn("inline-flex h-6 items-center rounded-md px-2 text-[12px] font-semibold", status.className)}>{status.label}</span>
+                    </div>
+                    <p className="mt-0.5 text-[13px] text-muted">
+                      {status.hint}
+                      {item.publishedAt && ` Live since ${formatDate(item.publishedAt)}.`} {compactCount(item.viewCount)} views
+                      {item.status === "published" && ` · ${compactCount(item.week.views)} this week`} · {item.voteCount} upvotes
+                      {item.promoImpressions > 0 && ` · ${compactCount(item.promoImpressions)} ad impressions · ${compactCount(item.promoClicks)} ad clicks`}
+                      {item.couponClicks > 0 && ` · ${compactCount(item.couponClicks)} coupon opens`}.
+                    </p>
                   </div>
-                  <p className="mt-0.5 text-[13px] text-muted">
-                    {status.hint}
-                    {item.publishedAt && ` Live since ${formatDate(item.publishedAt)}.`} {item.voteCount} upvotes.
-                  </p>
-                </div>
-                {item.status === "published" && (
-                  <Link href={`/product/${item.slug}`} className="h-9 rounded-lg px-3 text-[14px] font-medium leading-9 text-ink-soft hover:bg-band hover:text-ink">
-                    View
+                  {item.status === "published" && (
+                    <Link href={`/product/${item.slug}`} className="h-9 rounded-lg px-3 text-[14px] font-medium leading-9 text-ink-soft hover:bg-band hover:text-ink">
+                      View
+                    </Link>
+                  )}
+                  <Link href={`/account/listings/${item.id}`} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line px-3 text-[14px] font-medium text-ink hover:border-line-strong">
+                    <Pencil size={14} /> Edit
                   </Link>
-                )}
-                <Link href={`/account/listings/${item.id}`} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line px-3 text-[14px] font-medium text-ink hover:border-line-strong">
-                  <Pencil size={14} /> Edit
-                </Link>
+                </div>
+                {item.status === "rejected" && <RejectionNote note={item.rejectNote} image={item.rejectImage} />}
               </li>
             );
           })}

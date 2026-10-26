@@ -2,15 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowUpRight, BadgeCheck, Ticket } from "lucide-react";
-import { getListing, getReviews } from "@/lib/api";
-import { PLATFORM_LABEL, PRICING_LABEL, SITE_URL, absolute, formatDate, hostOf } from "@/lib/format";
+import { getListing, getPromos, getReviews } from "@/lib/api";
+import { interestParam } from "@/lib/interest";
+import { PLATFORM_LABEL, PRICING_LABEL, SITE_URL, absolute, compactCount, formatDate, hostOf } from "@/lib/format";
 import { Container } from "@/components/section";
 import { Breadcrumbs } from "@/components/page-header";
 import { ListingLogo } from "@/components/listing-logo";
 import { UpvoteButton } from "@/components/upvote-button";
 import { AlternativeLinks, CategoryChip, HalalBadge, KindBadge, PricingBadge } from "@/components/badges";
 import { SocialLinks } from "@/components/social-links";
-import { AdSlot } from "@/components/ad-slot";
+import { FeaturedPlacement } from "@/components/featured-placement";
+import { RecordView } from "@/components/record-view";
 import { ProductRow } from "@/components/product-card";
 import { ReviewForm } from "@/components/review-form";
 import { Stars } from "@/components/stars";
@@ -45,9 +47,18 @@ function visitUrl(website: string) {
 
 export default async function ProductPage({ params }: Props) {
   const { slug } = await params;
-  const [listing, reviews] = await Promise.all([getListing(slug), getReviews(slug)]);
+  const [listing, reviews, recent] = await Promise.all([getListing(slug), getReviews(slug), interestParam()]);
   if (!listing) notFound();
   const primary = listing.categories[0];
+  const promos = await getPromos({
+    placement: "product-sidebar",
+    category: listing.categories.map((category) => category.slug).join(","),
+    exclude: [listing.id, ...listing.related.map((item) => item.id)].join(","),
+    recent,
+    limit: 4,
+  });
+  const side = promos[0];
+  const more = promos.slice(1, 4);
   const visit = visitUrl(listing.website);
   const facts = [
     { label: "Website", value: <a href={visit} target="_blank" rel="noopener" className="font-medium text-brand-text hover:underline">{hostOf(listing.website)}</a> },
@@ -56,10 +67,12 @@ export default async function ProductPage({ params }: Props) {
     listing.country && { label: "Based in", value: listing.country },
     { label: "Listed", value: formatDate(listing.publishedAt) },
     { label: "Upvotes", value: <span className="tabular-nums">{listing.voteCount}</span> },
+    { label: "Views", value: <span className="tabular-nums">{compactCount(listing.viewCount)}</span> },
   ].filter(Boolean) as { label: string; value: React.ReactNode }[];
 
   return (
     <>
+      <RecordView slug={listing.slug} />
       <Container className="pt-8">
         <Breadcrumbs
           items={[
@@ -126,7 +139,11 @@ export default async function ProductPage({ params }: Props) {
             <div className="prose-listing mt-4" dangerouslySetInnerHTML={{ __html: listing.description }} />
           </section>
 
-          <AdSlot placement="product-mobile" className="mt-10 lg:hidden" />
+          {side && (
+            <div className="mt-10 rounded-2xl border border-line bg-surface lg:hidden">
+              <FeaturedPlacement listing={side} layout="list" caption />
+            </div>
+          )}
 
           {Object.keys(listing.socials).length > 0 && (
             <section className="mt-12" aria-labelledby="links">
@@ -249,7 +266,11 @@ export default async function ProductPage({ params }: Props) {
             </div>
           )}
 
-          <AdSlot placement="product-sidebar" className="hidden lg:block" />
+          {side && (
+            <div className="hidden rounded-2xl border border-line bg-surface lg:block">
+              <FeaturedPlacement listing={side} layout="list" compact caption />
+            </div>
+          )}
 
           {listing.related.length > 0 && (
             <div>
@@ -262,9 +283,14 @@ export default async function ProductPage({ params }: Props) {
             </div>
           )}
 
-          <div className="hidden lg:sticky lg:top-24 lg:block">
-            <AdSlot placement="product-sidebar-tall" />
-          </div>
+          {more.length > 0 && (
+            <div className="hidden rounded-2xl border border-line bg-surface lg:sticky lg:top-24 lg:block">
+              <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">Featured</p>
+              {more.map((item) => (
+                <FeaturedPlacement key={item.id} listing={item} layout="list" compact />
+              ))}
+            </div>
+          )}
 
           <p className="px-1 text-[12px] leading-relaxed text-muted">
             Is this your product?{" "}

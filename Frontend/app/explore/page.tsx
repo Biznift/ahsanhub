@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { getAds, getAlternative, getCategories, getListings } from "@/lib/api";
+import { getAlternative, getCategories, getListings, getPromos } from "@/lib/api";
+import { interestParam } from "@/lib/interest";
 import { Container } from "@/components/section";
 import { PageHeader } from "@/components/page-header";
 import { ListingBrowser, type BrowseParams } from "@/components/listing-browser";
@@ -35,10 +36,11 @@ export default async function ExplorePage({ searchParams }: Props) {
   const page = Math.max(1, Number(params.page) || 1);
   const alternative = params.alternative ? await getAlternative(params.alternative) : null;
   const alternativeName = alternative?.item?.name;
-  const [results, categories, ads] = await Promise.all([
+  const recent = await interestParam();
+  const [results, categories, promos] = await Promise.all([
     getListings({ q: params.q, category: params.category, kind, pricing: params.pricing, sort, page, limit: 24, alternative: alternativeName ? params.alternative : undefined }),
     getCategories(),
-    getAds("explore-inline"),
+    getPromos({ placement: "explore-inline", category: params.category, recent, limit: 6 }),
   ]);
 
   return (
@@ -49,7 +51,7 @@ export default async function ExplorePage({ searchParams }: Props) {
         description="Software, services, and shops are reviewed by a person before they go live. The full list shows every type, and each card says which one it is."
       />
       <Container className="py-10">
-        <ListingBrowser base="/explore" params={{ q: params.q, category: params.category, kind, pricing: params.pricing, sort: params.sort, page: params.page, view: params.view, alternative: alternativeName ? params.alternative : undefined }} results={results} categories={categories} sponsored={ads?.sponsored ?? []} alternativeName={alternativeName} />
+        <ListingBrowser base="/explore" params={{ q: params.q, category: params.category, kind, pricing: params.pricing, sort: params.sort, page: params.page, view: params.view, alternative: alternativeName ? params.alternative : undefined }} results={results} categories={categories} promos={promos} alternativeName={alternativeName} />
       </Container>
       <JsonLd
         data={{

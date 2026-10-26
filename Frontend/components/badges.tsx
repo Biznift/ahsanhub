@@ -32,6 +32,10 @@ export function SponsoredBadge() {
   return <span className="inline-flex h-5 items-center rounded-md bg-band px-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted">Sponsored</span>;
 }
 
+export function FeaturedBadge() {
+  return <span className="inline-flex h-5 items-center rounded-md bg-brand-soft px-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-brand-text">Featured</span>;
+}
+
 export function AlternativeLinks({ items, limit = 3 }: { items: { id?: string; name: string; slug: string }[]; limit?: number }) {
   const shown = items.slice(0, limit);
   if (shown.length === 0) return null;

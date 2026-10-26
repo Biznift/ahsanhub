@@ -86,6 +86,7 @@ export async function sendSenderMail(
     to: string;
     subject: string;
     text: string;
+    html?: string;
     inReplyTo?: string;
     references?: string;
   },
@@ -104,7 +105,7 @@ export async function sendSenderMail(
       to: { email: mail.to },
       subject: mail.subject,
       text: mail.text,
-      html: htmlFromText(mail.text),
+      html: mail.html || htmlFromText(mail.text),
       headers,
     },
   });

@@ -115,7 +115,7 @@ export default function MediaPage() {
               <h2 className="font-semibold">Cloudinary</h2>
               <p className="mt-1 text-sm text-[#667085]">
                 {enabled && configured
-                  ? `Connected to “${cloudName}”. Logos, banners, ads, and library files upload there.`
+                  ? `Connected to “${cloudName}”. Logos, banners, and library files upload there.`
                   : "Connect your Cloudinary account. Images, video, audio, PDFs, and other files Cloudinary supports go there when this is on."}
               </p>
             </div>

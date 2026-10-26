@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import type { Category, EditableListing } from "@/lib/types";
+import { RejectionNote } from "@/components/rejection-note";
 import { SubmitForm } from "@/components/submit-form";
 
 export function EditListing({ id, categories }: { id: string; categories: Category[] }) {
@@ -29,6 +30,7 @@ export function EditListing({ id, categories }: { id: string; categories: Catego
         <ArrowLeft size={15} /> My listings
       </Link>
       <h1 className="mb-8 mt-3 text-[32px] font-semibold tracking-[-0.03em] text-ink">{listing ? `Edit ${listing.name}` : "Edit listing"}</h1>
+      {listing?.status === "rejected" && <div className="mb-8"><RejectionNote note={listing.rejectNote} image={listing.rejectImage} /></div>}
       {error && <p className="text-[15px] text-danger">{error}</p>}
       {!listing && !error && <p className="text-[15px] text-muted">Loading…</p>}
       {listing && <SubmitForm categories={categoriesWithHidden(categories, listing)} existing={listing} />}

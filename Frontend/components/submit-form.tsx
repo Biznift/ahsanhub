@@ -75,6 +75,7 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
   const [couponCode, setCouponCode] = useState(existing?.couponCode ?? "");
   const [couponNote, setCouponNote] = useState(existing?.couponNote ?? "");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [contactName, setContactName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -124,6 +125,7 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
     founders.filter((founder) => founder.name.trim()).forEach((founder, index) => founder.file && form.set(`founderPhoto:${index}`, founder.file));
     if (!editing) {
       form.set("email", email);
+      form.set("phone", phone);
       if (password) form.set("password", password);
       if (contactName) form.set("contactName", contactName);
     }
@@ -370,7 +372,7 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
         </Section>
 
         {!editing && (
-          <Section id="account" index={7} title="Your account" description="We email you when your listing goes live.">
+          <Section id="account" index={7} title="Your account" description="We email you when your listing goes live. Your email and phone number are not publicly visible.">
             {signedIn ? (
               <p className="flex items-center gap-2 rounded-xl border border-line bg-band px-4 py-3 text-[14px] text-ink-soft">
                 <Lock size={15} /> Submitting as <span className="font-semibold text-ink">{account!.email}</span>. You can edit this listing from your account.
@@ -385,6 +387,9 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
                     <Input value={contactName} onChange={setContactName} maxLength={80} autoComplete="name" />
                   </Field>
                 </div>
+                <Field label="Phone number" required hint="Not shown on the public listing.">
+                  <Input value={phone} onChange={setPhone} type="tel" required autoComplete="tel" placeholder="01XXXXXXXXX" />
+                </Field>
                 <Field label="Password" hint="Optional. Creates an account with this email so you can edit the listing later.">
                   <Input value={password} onChange={setPassword} type="password" minLength={8} autoComplete="new-password" placeholder="At least 8 characters" />
                 </Field>
@@ -418,10 +423,14 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
               ? saved
                 ? existing?.status === "published"
                   ? "Saved. It is hidden again until an admin approves the changes."
-                  : "Saved. It stays in review until an admin publishes it."
+                  : existing?.status === "rejected"
+                    ? "Saved. It is back in review."
+                    : "Saved. It stays in review until an admin publishes it."
                 : existing?.status === "published"
                   ? "Saving sends this live listing back to review."
-                  : "Changes stay in review until an admin publishes the listing."
+                  : existing?.status === "rejected"
+                    ? "Saving sends this back for review."
+                    : "Changes stay in review until an admin publishes the listing."
               : "Every listing is reviewed by a person before it is published."}
           </p>
           <button type="submit" disabled={busy} className="h-11 rounded-xl bg-brand px-6 text-[15px] font-semibold text-white transition hover:bg-brand-hover disabled:opacity-60">

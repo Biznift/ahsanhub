@@ -17,7 +17,7 @@ export default async function CouponsPage() {
       <PageHeader
         crumbs={[{ href: "/", label: "Home" }, { label: "Coupon codes" }]}
         title="Coupon codes"
-        description="Special deals for products already on Ahsan Hub. The code stays hidden until you have an account. A new account only needs your name, email, and phone. The button opens the product website unless a special offer link is set."
+        description="Special deals for products already on Ahsan Hub. The code stays hidden until you have an account. Sign up with your name, email, phone, and password, and you come back to this page. The button opens the product website unless a special offer link is set."
       />
       <Container className="py-10">
         {deals.length === 0 ? (

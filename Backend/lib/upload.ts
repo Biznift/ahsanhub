@@ -149,26 +149,17 @@ export const RULES = {
     maxBytes: 2 * MB,
     check: ({ width = 0, height = 0 }) => (Math.min(width, height) < 128 ? "must be at least 128 px on each side." : null),
   },
+  rejection: {
+    label: "Rejection image",
+    kinds: ["image", "gif"],
+    maxBytes: { image: 5 * MB, gif: 8 * MB },
+  },
   media: {
     label: "File",
     kinds: ["image", "gif", "video", "audio", "pdf", "raw"],
     maxBytes: { image: 10 * MB, gif: 10 * MB, video: 40 * MB, audio: 15 * MB, pdf: 10 * MB, raw: 10 * MB },
   },
 } satisfies Record<string, UploadRule>;
-
-export function adRule(width: number, height: number): UploadRule {
-  return {
-    label: "Ad creative",
-    kinds: ["image", "gif", "video"],
-    maxBytes: { image: 2 * MB, gif: 8 * MB, video: 12 * MB },
-    check: (file) => {
-      if (file.kind === "video") return null;
-      const exact = file.width === width && file.height === height;
-      const retina = file.width === width * 2 && file.height === height * 2;
-      return exact || retina ? null : `must be exactly ${width} × ${height} (or ${width * 2} × ${height * 2}). This one is ${file.width} × ${file.height}.`;
-    },
-  };
-}
 
 export type Saved = { path: string; kind: Kind; width?: number; height?: number };
 

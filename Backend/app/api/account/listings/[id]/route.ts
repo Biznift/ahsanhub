@@ -3,6 +3,7 @@ import { HttpError, ok, route } from "@/lib/http";
 import { requireUser } from "@/lib/auth";
 import { detailInclude, parseListingForm, prepareListing, revalidate, toEditable, writeRelations } from "@/lib/directory";
 import { syncListingCoupon } from "@/lib/deals";
+import { removeUpload } from "@/lib/upload";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -23,11 +24,19 @@ export const PATCH = route<Context>(async (request, { params }) => {
   const form = await request.formData();
   const input = parseListingForm(form);
   const prepared = await prepareListing(form, input, existing);
-  const returnedToReview = existing.status === "published";
+  const resubmitted = existing.status === "rejected";
+  const returnedToReview = existing.status === "published" || resubmitted;
   await db.listing.update({
     where: { id: existing.id },
-    data: { ...prepared.columns, ...(returnedToReview ? { status: "pending" as const } : {}) },
+    data: {
+      ...prepared.columns,
+      ...(returnedToReview ? { status: "pending" as const } : {}),
+      ...(resubmitted ? { rejectNote: "", rejectImage: null } : {}),
+    },
   });
+  if (resubmitted && existing.rejectImage) {
+    await removeUpload(existing.rejectImage).catch((error) => console.error("Rejection image cleanup failed", error));
+  }
   await writeRelations(existing.id, prepared);
   await syncListingCoupon(existing.id, prepared.coupon);
   revalidate("listings", `listing:${existing.slug}`, "ads", "coupon-codes");

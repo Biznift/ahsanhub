@@ -41,6 +41,17 @@ export function formatDate(iso: string | null | undefined) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+export function compactCount(value: number | null | undefined) {
+  const count = value ?? 0;
+  if (count < 1000) return String(count);
+  if (count < 10_000) {
+    const scaled = count / 1000;
+    return `${scaled.toFixed(1).replace(/\.0$/, "")}k`;
+  }
+  if (count < 1_000_000) return `${Math.round(count / 1000)}k`;
+  return `${(count / 1_000_000).toFixed(1).replace(/\.0$/, "")}m`;
+}
+
 export function hostOf(url: string) {
   try {
     return new URL(url).hostname.replace(/^www\./, "");

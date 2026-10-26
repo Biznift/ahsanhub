@@ -20,7 +20,7 @@ export function SiteFooter({ site, categories }: { site: Site; categories: Categ
         </div>
         <FooterColumn title="Discover" links={[["/explore", "All listings"], ["/coupons", "Coupon codes"], ["/explore?kind=software", "Software / SaaS"], ["/explore?kind=service", "Services"], ["/explore?kind=ecommerce", "E-commerce"], ["/categories", "Categories"], ["/blog", "Blog"]]} />
         <FooterColumn title="Popular categories" links={top.map((category) => [`/category/${category.slug}`, category.name])} />
-        <FooterColumn title="For makers" links={[["/submit", "Submit a listing"], ["/account", "My listings"], ["/login", "Sign in"], ["/contact", "Contact"]]} />
+        <FooterColumn title="For makers" links={[["/submit", "Submit a listing"], ["/account", "My listings"], ["/login", "Sign in"], ["/signup", "Sign up"], ["/contact", "Contact"]]} />
       </div>
       <div className="border-t border-line">
         <div className="mx-auto flex max-w-[1240px] flex-wrap items-center justify-between gap-3 px-5 py-6 pb-20 text-[13px] text-muted sm:pb-6">

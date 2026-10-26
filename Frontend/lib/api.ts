@@ -1,5 +1,5 @@
 import "server-only";
-import type { AdPlacementData, Category, CouponDeal, ListingCard, ListingDetail, ListingKind, Page, PublicPost, Review, Site } from "@/lib/types";
+import type { Category, CouponDeal, ListingCard, ListingDetail, ListingKind, Page, PromoListing, PublicPost, Review, Site } from "@/lib/types";
 
 const BACKEND = process.env.BACKEND_URL ?? "http://localhost:3020";
 
@@ -76,8 +76,21 @@ export async function getCouponDeals(limit = 100) {
   return (await read<{ items: CouponDeal[] }>(`/api/public/coupon-codes?limit=${cap}`, ["coupon-codes"], 120))?.items ?? [];
 }
 
-export async function getAds(placement: string) {
-  return read<AdPlacementData>(`/api/public/ads?placement=${placement}`, ["ads", "listings"], 300);
+export async function getPromos(query: { placement: string; category?: string; exclude?: string; recent?: string; limit?: number }) {
+  const params = new URLSearchParams();
+  params.set("placement", query.placement);
+  if (query.category) params.set("category", query.category);
+  if (query.exclude) params.set("exclude", query.exclude);
+  if (query.recent) params.set("recent", query.recent);
+  if (query.limit) params.set("limit", String(query.limit));
+  try {
+    const response = await fetch(`${BACKEND}/api/public/ads?${params}`, { cache: "no-store" });
+    if (!response.ok) return [];
+    const body = (await response.json()) as { items?: PromoListing[] };
+    return body.items ?? [];
+  } catch {
+    return [];
+  }
 }
 
 export async function getSitemap() {

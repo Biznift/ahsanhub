@@ -15,18 +15,18 @@ export type Socials = Partial<Record<SocialKey, string>>;
 export const PRICING = ["free", "freemium", "paid", "open_source"] as const;
 export const PLATFORMS = ["web", "ios", "android", "windows", "macos", "linux", "chrome"] as const;
 
-/** Banner placements. Native placements show sponsored listings only and have no creative size. */
-export const AD_PLACEMENTS = {
-  "home-leaderboard": { label: "Home, between sections", width: 1200, height: 150 },
-  "product-sidebar": { label: "Product page, sidebar top", width: 300, height: 250 },
-  "product-sidebar-tall": { label: "Product page, sidebar tall", width: 300, height: 600 },
-  "product-mobile": { label: "Product page, mobile", width: 600, height: 150 },
+/** Where a featured or pinned product can stand in for an ad. Layout follows the surrounding list or grid. */
+export const PROMO_PLACEMENTS = {
+  "home-leaderboard": { label: "Home, between sections", limit: 1 },
+  "product-sidebar": { label: "Product page, sidebar", limit: 1 },
+  "product-sidebar-tall": { label: "Product page, more in the sidebar", limit: 3 },
+  "product-mobile": { label: "Product page, mobile", limit: 1 },
+  "explore-inline": { label: "Explore and category lists, every 8 rows", limit: 6 },
 } as const;
-export type AdPlacement = keyof typeof AD_PLACEMENTS;
-export const NATIVE_PLACEMENTS = ["explore-inline"] as const;
+export type PromoPlacement = keyof typeof PROMO_PLACEMENTS;
 
-export function isPlacement(value: string): value is AdPlacement {
-  return value in AD_PLACEMENTS;
+export function isPlacement(value: string): value is PromoPlacement {
+  return value in PROMO_PLACEMENTS;
 }
 
 /** A stored upload (`/files/…`) or any http(s) image link. Empty is allowed. */
@@ -325,6 +325,7 @@ export function toCard(row: CardRow, options?: { includeHidden?: boolean }) {
     sponsored: row.sponsored,
     halalVerified: row.halalVerified,
     voteCount: row.voteCount,
+    viewCount: row.viewCount,
     kind: row.kind,
     categories: row.categories
       .filter((item) => item.category.status !== "rejected" && (includeHidden || (!item.category.hidden && item.category.status === "approved")))
@@ -385,6 +386,8 @@ export function toEditable(row: DetailRow) {
     status: row.status,
     contactEmail: row.contactEmail,
     ownerId: row.ownerId,
+    rejectNote: row.rejectNote,
+    rejectImage: row.rejectImage,
     categoryIds: row.categories.filter((item) => item.category.status !== "rejected").map((item) => item.categoryId),
     couponCode: row.couponDeals.find((deal) => deal.fromListing)?.code ?? "",
     couponNote: row.couponDeals.find((deal) => deal.fromListing)?.note ?? "",

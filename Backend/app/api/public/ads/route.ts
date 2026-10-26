@@ -1,35 +1,48 @@
+import { z } from "zod";
 import { db } from "@/lib/db";
 import { HttpError, ok, route } from "@/lib/http";
-import { AD_PLACEMENTS, NATIVE_PLACEMENTS, cardInclude, isPlacement, toCard } from "@/lib/directory";
+import { PROMO_PLACEMENTS, isPlacement } from "@/lib/directory";
+import { pickPromos } from "@/lib/promos";
 
-/**
- * Creatives for one placement plus sponsored free listings as the fallback.
- * The site picks one to show; an empty response means the slot is not rendered.
- */
+const querySchema = z.object({
+  placement: z.string(),
+  category: z.string().max(400).optional(),
+  exclude: z.string().max(400).optional(),
+  recent: z.string().max(400).optional(),
+  limit: z.coerce.number().int().min(1).max(8).optional(),
+});
+
+function slugs(value: string | undefined) {
+  if (!value) return [];
+  const seen = new Set<string>();
+  for (const part of value.split(",")) {
+    const slug = part.trim().toLowerCase();
+    if (!/^[a-z0-9-]{1,80}$/.test(slug) || seen.has(slug)) continue;
+    seen.add(slug);
+    if (seen.size >= 8) break;
+  }
+  return [...seen];
+}
+
+function ids(value: string | undefined) {
+  if (!value) return [];
+  return value
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => /^[a-z0-9]{8,40}$/i.test(part))
+    .slice(0, 24);
+}
+
+/** Featured and pinned products for one placement. Not cached: each response is a fresh fair draw. */
 export const GET = route(async (request) => {
-  const placement = new URL(request.url).searchParams.get("placement") ?? "";
-  const native = (NATIVE_PLACEMENTS as readonly string[]).includes(placement);
-  if (!native && !isPlacement(placement)) throw new HttpError(400, "Unknown placement.");
-
-  const [ads, sponsored] = await Promise.all([
-    native
-      ? []
-      : db.ad.findMany({
-          where: { placement, active: true },
-          orderBy: { createdAt: "desc" },
-          select: { id: true, title: true, kind: true, file: true, url: true },
-        }),
-    db.listing.findMany({
-      where: { status: "published", sponsored: true, pricing: { in: ["free", "freemium"] } },
-      include: cardInclude,
-      orderBy: { publishedAt: "desc" },
-      take: 6,
-    }),
-  ]);
-  return ok({
-    placement,
-    size: native ? null : AD_PLACEMENTS[placement as keyof typeof AD_PLACEMENTS],
-    ads,
-    sponsored: sponsored.map((row) => toCard(row, { includeHidden: false })),
+  const query = querySchema.parse(Object.fromEntries(new URL(request.url).searchParams));
+  if (!isPlacement(query.placement)) throw new HttpError(400, "Unknown placement.");
+  const placement = PROMO_PLACEMENTS[query.placement];
+  const items = await pickPromos({
+    limit: query.limit ?? placement.limit,
+    categories: slugs(query.category),
+    exclude: ids(query.exclude),
+    recent: slugs(query.recent),
   });
+  return ok({ placement: query.placement, items }, { headers: { "cache-control": "no-store" } });
 });

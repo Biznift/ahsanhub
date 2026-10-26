@@ -46,7 +46,7 @@ export const DEFAULT_GENERAL: GeneralSettings = {
   hiddenSlugs: [],
 };
 
-const EMAIL_EVENTS = ["verify", "order_placed", "payment_reminder", "payment_received", "order_status", "order_message", "feedback_reply"] as const;
+const EMAIL_EVENTS = ["verify", "order_placed", "payment_reminder", "payment_received", "order_status", "order_message", "feedback_reply", "listing_rejected"] as const;
 
 /** Mailbox passwords are short. Sender tokens are JWTs and run past 1,000 characters. */
 const MAIL_SECRET_MAX = 8000;
@@ -119,7 +119,7 @@ export const DEFAULT_EMAIL: StoredEmail = {
   imapPort: 993,
   imapSecure: true,
   inboxName: "INBOX",
-  events: Object.fromEntries(EMAIL_EVENTS.map((key) => [key, key === "verify" || key === "feedback_reply"])),
+  events: Object.fromEntries(EMAIL_EVENTS.map((key) => [key, key === "verify" || key === "feedback_reply" || key === "listing_rejected"])),
 };
 
 /** Mailbox folder people write to. INBOX is the usual name. */

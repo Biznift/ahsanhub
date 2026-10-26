@@ -9,6 +9,7 @@ import { LISTING_KINDS } from "@/lib/kinds";
 import { uniqueSlug } from "@/lib/slug";
 import { recordActivity, sendVerification } from "@/lib/activity";
 import { alert } from "@/lib/telegram";
+import { normalizePhone } from "@/lib/phone";
 
 const querySchema = z.object({
   q: z.string().trim().max(80).optional(),
@@ -59,6 +60,7 @@ const ownerSchema = z.object({
   email: z.string().trim().toLowerCase().email("Enter a valid email"),
   password: z.string().max(200).optional(),
   contactName: z.string().trim().max(80).optional(),
+  phone: z.string().trim().max(30).optional(),
 });
 
 export const POST = route(async (request) => {
@@ -70,7 +72,9 @@ export const POST = route(async (request) => {
     email: signedIn?.email ?? form.get("email"),
     password: (form.get("password") as string | null) || undefined,
     contactName: (form.get("contactName") as string | null) || undefined,
+    phone: (form.get("phone") as string | null) || undefined,
   });
+  const phone = signedIn ? signedIn.phone : normalizePhone(owner.phone ?? "");
 
   let ownerId: string | null = signedIn?.id ?? null;
   const password = !signedIn ? owner.password : undefined;
@@ -97,6 +101,7 @@ export const POST = route(async (request) => {
       data: {
         email: owner.email,
         name: owner.contactName || input.founders[0]?.name || input.name,
+        phone,
         passwordHash: await hashPassword(password),
         role: "owner",
         emailVerified: false,
@@ -104,9 +109,12 @@ export const POST = route(async (request) => {
     });
     ownerId = user.id;
   }
+  if (phone && ownerId && !signedIn && !createdAccount) {
+    await db.user.update({ where: { id: ownerId }, data: { phone } });
+  }
   const slug = await uniqueSlug(input.name, async (candidate) => (await db.listing.count({ where: { slug: candidate } })) > 0);
   const listing = await db.listing.create({
-    data: { ...prepared.columns, slug, contactEmail: owner.email, ownerId, status: "pending" },
+    data: { ...prepared.columns, slug, contactEmail: owner.email, contactPhone: phone, ownerId, status: "pending" },
   });
   await writeRelations(listing.id, prepared);
   await syncListingCoupon(listing.id, prepared.coupon);

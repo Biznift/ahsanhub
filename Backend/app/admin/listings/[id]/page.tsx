@@ -8,6 +8,7 @@ import { useStore } from "@/components/store";
 import { Button, cn } from "@/components/ui";
 import { Card, ConfirmDialog, StatusPill, Switch, Thumb, api, formatDate, useApi } from "@/components/admin-kit";
 import { ListingEditor, type EditableListing } from "@/components/listing-editor";
+import { RejectListingDialog, rejectionResultMessage } from "@/components/reject-listing";
 import { formatListingCopy } from "@/lib/listing-copy";
 
 type Listing = EditableListing & {
@@ -18,8 +19,15 @@ type Listing = EditableListing & {
   sponsored: boolean;
   halalVerified: boolean;
   socialPosted: boolean;
+  rejectNote: string;
+  rejectImage: string | null;
   categories: { name: string; slug: string }[];
   voteCount: number;
+  viewCount: number;
+  promoImpressions: number;
+  promoClicks: number;
+  couponClicks: number;
+  week: { views: number; impressions: number; clicks: number; couponClicks: number };
   ownerId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -33,6 +41,8 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
   const { notify } = useStore();
   const { data, error, setData } = useApi<Listing>(`/api/admin/listings/${id}`);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   async function patch(change: Partial<Pick<Listing, "status" | "featured" | "sponsored" | "halalVerified" | "socialPosted">>) {
@@ -41,6 +51,27 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
       notify("Saved");
     } catch (problem) {
       notify((problem as Error).message);
+    }
+  }
+
+  async function reject(note: string, image: File | null) {
+    setRejecting(true);
+    try {
+      const form = new FormData();
+      form.set("status", "rejected");
+      form.set("rejectNote", note);
+      if (image) form.set("rejectImage", image);
+      const saved = await api<Listing & { notice: { emailed: string[]; failed: string[]; skipped: boolean } }>(`/api/admin/listings/${id}`, {
+        method: "PATCH",
+        body: form,
+      });
+      setData(saved);
+      notify(rejectionResultMessage(saved.name, saved.notice));
+      setRejectOpen(false);
+    } catch (problem) {
+      notify((problem as Error).message);
+    } finally {
+      setRejecting(false);
     }
   }
 
@@ -74,7 +105,10 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
             <StatusPill status={data.status} />
           </div>
           <p className="mt-1 text-sm text-[#667085]">
-            Submitted {formatDate(data.createdAt)} · {data.voteCount} upvotes · {data.ownerId ? "Owner can edit from their account" : "No account. Only admins can edit this listing."}
+            Submitted {formatDate(data.createdAt)} · {data.voteCount} upvotes · {data.viewCount.toLocaleString()} views · {data.ownerId ? "Owner can edit from their account" : "No account. Only admins can edit this listing."}
+          </p>
+          <p className="mt-1 text-sm text-[#667085]">
+            Last 7 days: {data.week.views.toLocaleString()} views · {data.week.impressions.toLocaleString()} ad impressions · {data.week.clicks.toLocaleString()} ad clicks · {data.week.couponClicks.toLocaleString()} coupon opens
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -120,15 +154,25 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
           <Button type="button" tone="ghost" disabled={data.status === "pending"} onClick={() => patch({ status: "pending" })}>
             Back to pending
           </Button>
-          <Button type="button" tone="danger" disabled={data.status === "rejected"} onClick={() => patch({ status: "rejected" })}>
-            Reject
+          <Button type="button" tone="danger" onClick={() => setRejectOpen(true)}>
+            {data.status === "rejected" ? "Update rejection note" : "Reject"}
           </Button>
         </div>
+        {data.status === "rejected" && (data.rejectNote || data.rejectImage) && (
+          <div className="mt-4 rounded-lg border border-[#f5c2c0] bg-[#fdecea] p-3">
+            <p className="text-xs font-semibold text-[#b42318]">Shown to the submitter</p>
+            {data.rejectNote && <p className="mt-1 whitespace-pre-wrap text-sm text-[#1d2939]">{data.rejectNote}</p>}
+            {data.rejectImage && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={data.rejectImage} alt="" className="mt-3 max-h-48 max-w-full rounded-lg border border-[#f5c2c0] object-contain" />
+            )}
+          </div>
+        )}
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          <Toggle label="Featured" hint="Shown in the home page Featured row" checked={data.featured} onChange={(featured) => patch({ featured })} />
+          <Toggle label="Featured" hint="Joins the ad rotation and the home page Featured row" checked={data.featured} onChange={(featured) => patch({ featured })} />
           <Toggle
             label="Sponsored"
-            hint={canSponsor ? "Fills ad slots that have no banner" : "Only free or freemium listings"}
+            hint={canSponsor ? "Shows a sponsored label. Ad slots use featured and pinned products" : "Only free or freemium listings"}
             checked={data.sponsored}
             disabled={!canSponsor && !data.sponsored}
             onChange={(sponsored) => patch({ sponsored })}
@@ -154,6 +198,18 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
           Permanently delete
         </Button>
       </Card>
+
+      {rejectOpen && (
+        <RejectListingDialog
+          name={data.name}
+          busy={rejecting}
+          updating={data.status === "rejected"}
+          initialNote={data.rejectNote}
+          existingImage={data.rejectImage}
+          onCancel={() => !rejecting && setRejectOpen(false)}
+          onConfirm={reject}
+        />
+      )}
 
       {confirmDelete && (
         <ConfirmDialog

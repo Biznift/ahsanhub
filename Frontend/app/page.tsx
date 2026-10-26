@@ -1,24 +1,27 @@
 import Link from "next/link";
 import { ArrowRight, Search } from "lucide-react";
-import { getCategories, getCouponDeals, getListings } from "@/lib/api";
+import { getCategories, getCouponDeals, getListings, getPromos } from "@/lib/api";
+import { interestParam } from "@/lib/interest";
 import { KIND_LABEL, LISTING_KINDS } from "@/lib/format";
 import { Container, SectionHeader } from "@/components/section";
 import { ProductCard, ProductRow } from "@/components/product-card";
-import { AdSlot } from "@/components/ad-slot";
+import { FeaturedPlacement } from "@/components/featured-placement";
 import { CategoryIcon } from "@/components/category-icon";
 import { CouponGrid } from "@/components/coupon-card";
 
 export default async function HomePage() {
-  const [top, featured, recent, free, categories, deals] = await Promise.all([
+  const recent = await interestParam();
+  const [top, featured, recentListings, free, categories, deals, promos] = await Promise.all([
     getListings({ sort: "top", limit: 5 }),
     getListings({ sort: "featured", limit: 6 }),
     getListings({ sort: "new", limit: 8 }),
     getListings({ pricing: "free", sort: "top", limit: 3 }),
     getCategories(),
     getCouponDeals(6),
+    getPromos({ placement: "home-leaderboard", limit: 2, recent }),
   ]);
   const popular = [...categories].sort((a, b) => b.count - a.count);
-  const totalProducts = recent.total;
+  const totalProducts = recentListings.total;
 
   return (
     <>
@@ -86,7 +89,11 @@ export default async function HomePage() {
       </section>
 
       <Container className="mt-12">
-        <AdSlot placement="home-leaderboard" />
+        {promos[0] && (
+          <div className="rounded-2xl border border-line bg-surface">
+            <FeaturedPlacement listing={promos[0]} layout="list" caption />
+          </div>
+        )}
       </Container>
 
       {featured.items.length > 0 && (
@@ -108,7 +115,7 @@ export default async function HomePage() {
             <SectionHeader
               eyebrow="Special deals"
               title="Coupon codes"
-              description="Deals for products already on Ahsan Hub. The code is hidden until you sign in. A new account only needs your name, email, and phone."
+              description="Deals for products already on Ahsan Hub. The code is hidden until you have an account. Sign up with your name, email, phone, and password, then you come back to this page."
               href="/coupons"
             />
             <CouponGrid items={deals} />
@@ -119,11 +126,11 @@ export default async function HomePage() {
       <section className="mt-20 border-y border-line bg-band py-16">
         <Container>
           <SectionHeader eyebrow="Fresh" title="Recently added" description="The newest products to pass review." href="/explore?sort=new" />
-          {recent.items.length === 0 ? (
+          {recentListings.items.length === 0 ? (
             <p className="text-[15px] text-muted">Nothing here yet.</p>
           ) : (
             <div className="grid grid-cols-1 gap-x-6 rounded-2xl border border-line bg-surface p-2 md:grid-cols-2">
-              {recent.items.map((listing) => (
+              {recentListings.items.map((listing) => (
                 <ProductRow key={listing.id} listing={listing} />
               ))}
             </div>
@@ -145,7 +152,11 @@ export default async function HomePage() {
       )}
 
       <Container className="mt-16">
-        <AdSlot placement="home-leaderboard" />
+        {promos[1] && (
+          <div className="rounded-2xl border border-line bg-surface">
+            <FeaturedPlacement listing={promos[1]} layout="list" caption />
+          </div>
+        )}
       </Container>
 
       {categories.length > 0 && (

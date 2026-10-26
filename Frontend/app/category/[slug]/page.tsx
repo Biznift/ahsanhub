@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getAds, getCategories, getListings } from "@/lib/api";
+import { getCategories, getListings, getPromos } from "@/lib/api";
+import { interestParam } from "@/lib/interest";
 import { Container } from "@/components/section";
 import { PageHeader } from "@/components/page-header";
 import { ListingBrowser, type BrowseParams } from "@/components/listing-browser";
@@ -32,9 +33,10 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   if (!category) notFound();
   const sort = query.sort === "top" || query.sort === "featured" ? query.sort : "new";
   const page = Math.max(1, Number(query.page) || 1);
-  const [results, ads] = await Promise.all([
+  const recent = await interestParam();
+  const [results, promos] = await Promise.all([
     getListings({ category: slug, q: query.q, pricing: query.pricing, sort, page, limit: 24 }),
-    getAds("explore-inline"),
+    getPromos({ placement: "explore-inline", category: slug, recent, limit: 6 }),
   ]);
 
   return (
@@ -45,7 +47,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         description={category.description || `Halal ${category.name.toLowerCase()} software and services, reviewed by the Ahsan Hub team and ranked by the community.`}
       />
       <Container className="py-10">
-        <ListingBrowser base={`/category/${slug}`} params={{ q: query.q, pricing: query.pricing, sort: query.sort, page: query.page, view: query.view }} results={results} categories={categories} sponsored={ads?.sponsored ?? []} lockCategory />
+        <ListingBrowser base={`/category/${slug}`} params={{ q: query.q, pricing: query.pricing, sort: query.sort, page: query.page, view: query.view }} results={results} categories={categories} promos={promos} lockCategory />
       </Container>
       <JsonLd
         data={[

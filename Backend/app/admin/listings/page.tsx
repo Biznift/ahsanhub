@@ -9,6 +9,7 @@ import { ModuleFrame } from "@/components/frame";
 import { useStore } from "@/components/store";
 import { Button, TextInput, cn } from "@/components/ui";
 import { ConfirmDialog, Empty, StatusPill, Switch, Thumb, api, formatDate, useApi } from "@/components/admin-kit";
+import { RejectListingDialog, rejectionResultMessage } from "@/components/reject-listing";
 import { KIND_LABEL, type ListingKind } from "@/lib/kinds";
 import { formatListingCopy, type ListingCopySource } from "@/lib/listing-copy";
 
@@ -25,9 +26,13 @@ type AdminListingRow = {
   halalVerified: boolean;
   socialPosted: boolean;
   voteCount: number;
+  viewCount: number;
   website: string;
   contactEmail: string;
+  contactPhone: string;
   ownerEmail: string | null;
+  rejectNote: string;
+  rejectImage: string | null;
   kind: ListingKind;
   categories: { name: string; slug: string }[];
   createdAt: string;
@@ -65,6 +70,8 @@ function ListingsScreen() {
   const [query, setQuery] = useState("");
   const [submitted, setSubmitted] = useState("");
   const [pendingDelete, setPendingDelete] = useState<AdminListingRow | null>(null);
+  const [pendingReject, setPendingReject] = useState<AdminListingRow | null>(null);
+  const [rejecting, setRejecting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [copyingId, setCopyingId] = useState<string | null>(null);
   const { notify } = useStore();
@@ -87,6 +94,33 @@ function ListingsScreen() {
       if (change.socialPosted !== undefined) notify(change.socialPosted ? "Posted" : "Cleared");
     } catch (problem) {
       notify((problem as Error).message);
+    }
+  }
+
+  async function reject(row: AdminListingRow, note: string, image: File | null) {
+    setRejecting(true);
+    try {
+      const form = new FormData();
+      form.set("status", "rejected");
+      form.set("rejectNote", note);
+      if (image) form.set("rejectImage", image);
+      const saved = await api<AdminListingRow & { notice: { emailed: string[]; failed: string[]; skipped: boolean } }>(`/api/admin/listings/${row.id}`, {
+        method: "PATCH",
+        body: form,
+      });
+      setData((current) =>
+        current && {
+          items: current.items
+            .map((item) => (item.id === row.id ? { ...item, status: "rejected" as const, rejectNote: saved.rejectNote, rejectImage: saved.rejectImage } : item))
+            .filter((item) => !status || item.status === status),
+        },
+      );
+      notify(rejectionResultMessage(row.name, saved.notice));
+      setPendingReject(null);
+    } catch (problem) {
+      notify((problem as Error).message);
+    } finally {
+      setRejecting(false);
     }
   }
 
@@ -170,10 +204,14 @@ function ListingsScreen() {
                       </Link>
                       <p className="truncate text-xs text-[#667085]">{row.categories.map((item) => item.name).join(", ")}</p>
                       <p className="truncate text-xs text-[#98a2b3]">
-                        {KIND_LABEL[row.kind]} · {formatDate(row.createdAt)} · {row.pricing.replace("_", " ")} · {row.voteCount} votes
+                        {KIND_LABEL[row.kind]} · {formatDate(row.createdAt)} · {row.pricing.replace("_", " ")} · {row.voteCount} votes · {row.viewCount} views
                         {row.socialPosted && <span className="font-medium text-[#0b6e4f]"> · Posted</span>}
                       </p>
-                      <p className="truncate text-xs text-[#344054]">{row.ownerEmail ?? row.contactEmail}</p>
+                      <p className="truncate text-xs text-[#344054]">
+                        {row.ownerEmail ?? row.contactEmail}
+                        {row.contactPhone ? ` · ${row.contactPhone}` : ""}
+                      </p>
+                      {row.status === "rejected" && row.rejectNote && <p className="mt-1 line-clamp-2 text-xs text-[#b42318]">{row.rejectNote}</p>}
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -215,7 +253,7 @@ function ListingsScreen() {
                     </Button>
                   )}
                   {row.status !== "rejected" && (
-                    <Button type="button" tone="danger" className="px-2.5 py-1.5 text-sm" onClick={() => patch(row, { status: "rejected" })}>
+                    <Button type="button" tone="danger" className="px-2.5 py-1.5 text-sm" onClick={() => setPendingReject(row)}>
                       Reject
                     </Button>
                   )}
@@ -233,6 +271,15 @@ function ListingsScreen() {
             );
           })}
         </div>
+      )}
+
+      {pendingReject && (
+        <RejectListingDialog
+          name={pendingReject.name}
+          busy={rejecting}
+          onCancel={() => !rejecting && setPendingReject(null)}
+          onConfirm={(note, image) => reject(pendingReject, note, image)}
+        />
       )}
 
       {pendingDelete && (

@@ -101,12 +101,19 @@ model Listing {
   halalNote    String            @default("")
   socials      Json              @default("{}")
   contactEmail String
+  contactPhone String            @default("")
   status       ListingStatus     @default(pending)
   featured     Boolean           @default(false)
   sponsored    Boolean           @default(false)
   halalVerified Boolean          @default(false)
   socialPosted Boolean           @default(false)
+  rejectNote   String            @default("")
+  rejectImage  String?
   voteCount    Int               @default(0)
+  viewCount    Int               @default(0)
+  promoImpressions Int           @default(0)
+  promoClicks  Int               @default(0)
+  couponClicks Int               @default(0)
   kind         ListingKind       @default(software)
   ownerId      String?
   owner        User?             @relation(fields: [ownerId], references: [id], onDelete: SetNull)
@@ -116,6 +123,9 @@ model Listing {
   reviews            Review[]
   alternatives       ListingAlternative[]
   couponDeals        CouponDeal[]
+  events             ListingEvent[]
+  metrics            ListingMetric[]
+  promoPin           PromoPin?
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
   publishedAt  DateTime?
@@ -216,6 +226,39 @@ model Ad {
   createdAt DateTime @default(now())
 
   @@index([placement, active])
+}
+
+/** One row per visitor per day, so a refresh does not inflate the public number. */
+model ListingEvent {
+  listingId  String
+  visitorKey String
+  day        DateTime @db.Date
+  kind       String
+  listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@id([listingId, visitorKey, day, kind])
+  @@index([listingId, day])
+}
+
+/** Daily totals for the owner and admin week view. Public pages read Listing.viewCount. */
+model ListingMetric {
+  listingId    String
+  day          DateTime @db.Date
+  views        Int      @default(0)
+  impressions  Int      @default(0)
+  clicks       Int      @default(0)
+  couponClicks Int      @default(0)
+  listing      Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@id([listingId, day])
+}
+
+/** A published product an admin wants in the ad rotation even when it is not featured. */
+model PromoPin {
+  id        String   @id @default(cuid())
+  listingId String   @unique
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 }
 
 model Media {

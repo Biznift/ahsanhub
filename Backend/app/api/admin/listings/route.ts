@@ -28,7 +28,7 @@ export const GET = route(async (request) => {
   }
   const rows = await db.listing.findMany({
     where,
-    include: { ...cardInclude, owner: { select: { email: true } } },
+    include: { ...cardInclude, owner: { select: { email: true, phone: true } } },
     orderBy: { createdAt: "desc" },
     take: 200,
   });
@@ -38,7 +38,10 @@ export const GET = route(async (request) => {
       status: row.status,
       website: row.website,
       contactEmail: row.contactEmail,
+      contactPhone: row.contactPhone || row.owner?.phone || "",
       ownerEmail: row.owner?.email ?? null,
+      rejectNote: row.rejectNote,
+      rejectImage: row.rejectImage,
       socialPosted: row.socialPosted,
       createdAt: row.createdAt.toISOString(),
     })),
