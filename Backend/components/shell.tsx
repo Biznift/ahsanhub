@@ -10,6 +10,7 @@ import {
   CreditCard,
   DatabaseBackup,
   FileText,
+  Flag,
   Gift,
   LayoutGrid,
   MonitorPlay,
@@ -55,6 +56,7 @@ const ICONS: Record<string, typeof LayoutDashboard> = {
   notifications: Bell,
   backups: DatabaseBackup,
   reviews: Star,
+  reports: Flag,
   branding: Palette,
   blog: Newspaper,
   email: AtSign,
@@ -72,8 +74,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const [badges, setBadges] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    api<{ pending: number; pendingReviews: number; unreadMail?: number }>("/api/admin/stats")
-      .then((stats) => setBadges({ listings: stats.pending, reviews: stats.pendingReviews, email: stats.unreadMail ?? 0 }))
+    api<{ pending: number; pendingReviews: number; openReports?: number; unreadMail?: number }>("/api/admin/stats")
+      .then((stats) => setBadges({ listings: stats.pending, reviews: stats.pendingReviews, reports: stats.openReports ?? 0, email: stats.unreadMail ?? 0 }))
       .catch(() => setBadges({}));
   }, [pathname]);
   const modules = navModules().filter((item) => isPinnedNav(item.slug) || !hiddenSlugs.includes(item.slug));

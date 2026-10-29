@@ -58,6 +58,10 @@ export function Thumb({ src, name, size = 40 }: { src: string | null | undefined
 }
 
 const STATUS_TONE: Record<string, string> = {
+  open: "bg-[#fff4e5] text-[#9a5b00]",
+  reviewed: "bg-[#f2f4f7] text-[#475467]",
+  dismissed: "bg-[#f2f4f7] text-[#475467]",
+  actioned: "bg-[#e7f3ee] text-[#0b6e4f]",
   published: "bg-[#e7f3ee] text-[#0b6e4f]",
   approved: "bg-[#e7f3ee] text-[#0b6e4f]",
   active: "bg-[#e7f3ee] text-[#0b6e4f]",

@@ -48,6 +48,22 @@ enum ReviewStatus {
   hidden
 }
 
+enum ListingReportReason {
+  not_halal
+  halal_claim
+  wrong_info
+  broken_link
+  spam
+  other
+}
+
+enum ListingReportStatus {
+  open
+  reviewed
+  dismissed
+  actioned
+}
+
 enum AdKind {
   image
   gif
@@ -121,6 +137,7 @@ model Listing {
   founders           Founder[]
   votes              Vote[]
   reviews            Review[]
+  reports            ListingReport[]
   alternatives       ListingAlternative[]
   couponDeals        CouponDeal[]
   events             ListingEvent[]
@@ -194,6 +211,22 @@ model Review {
   createdAt DateTime     @default(now())
 
   @@index([listingId, status])
+}
+
+/** A private note from a visitor. It never appears on the public listing. */
+model ListingReport {
+  id        String              @id @default(cuid())
+  listingId String
+  listing   Listing             @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  reason    ListingReportReason
+  body      String
+  email     String              @default("")
+  status    ListingReportStatus @default(open)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  @@index([listingId, status])
+  @@index([status, createdAt])
 }
 
 model CouponDeal {

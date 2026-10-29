@@ -11,6 +11,7 @@ type Stats = {
   pending: number;
   rejected: number;
   pendingReviews: number;
+  openReports: number;
   owners: number;
   votesThisWeek: number;
   newThisWeek: number;
@@ -26,6 +27,7 @@ export default function DashboardPage() {
     ? [
         { label: "Waiting for review", value: data.pending, href: "/admin/listings?status=pending", accent: data.pending > 0 },
         { label: "Reviews to approve", value: data.pendingReviews, href: "/admin/reviews", accent: data.pendingReviews > 0 },
+        { label: "Listing reports", value: data.openReports, href: "/admin/reports", accent: data.openReports > 0 },
         { label: "Published listings", value: data.published, href: "/admin/listings?status=published" },
         { label: "Owner accounts", value: data.owners, href: "/admin/users" },
         { label: "Upvotes, last 7 days", value: data.votesThisWeek },

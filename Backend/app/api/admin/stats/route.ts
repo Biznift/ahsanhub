@@ -5,11 +5,12 @@ import { requireAdmin } from "@/lib/auth";
 export const GET = route(async () => {
   await requireAdmin();
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const [published, pending, rejected, pendingReviews, owners, votesThisWeek, newThisWeek, featuredLive, unreadMail, latest] = await Promise.all([
+  const [published, pending, rejected, pendingReviews, openReports, owners, votesThisWeek, newThisWeek, featuredLive, unreadMail, latest] = await Promise.all([
     db.listing.count({ where: { status: "published" } }),
     db.listing.count({ where: { status: "pending" } }),
     db.listing.count({ where: { status: "rejected" } }),
     db.review.count({ where: { status: "pending" } }),
+    db.listingReport.count({ where: { status: "open" } }),
     db.user.count({ where: { role: "owner" } }),
     db.vote.count({ where: { createdAt: { gte: weekAgo } } }),
     db.listing.count({ where: { createdAt: { gte: weekAgo } } }),
@@ -26,6 +27,7 @@ export const GET = route(async () => {
     pending,
     rejected,
     pendingReviews,
+    openReports,
     owners,
     votesThisWeek,
     newThisWeek,

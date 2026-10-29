@@ -15,6 +15,7 @@ import { FeaturedPlacement } from "@/components/featured-placement";
 import { RecordView } from "@/components/record-view";
 import { ProductRow } from "@/components/product-card";
 import { ReviewForm } from "@/components/review-form";
+import { ReportListing } from "@/components/report-listing";
 import { Stars } from "@/components/stars";
 import { JsonLd } from "@/components/json-ld";
 
@@ -265,6 +266,8 @@ export default async function ProductPage({ params }: Props) {
               <p className="mt-2 text-[14px] leading-relaxed text-ink-soft">{listing.halalNote}</p>
             </div>
           )}
+
+          <ReportListing slug={listing.slug} name={listing.name} />
 
           {side && (
             <div className="hidden rounded-2xl border border-line bg-surface lg:block">

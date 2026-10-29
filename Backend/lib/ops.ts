@@ -135,6 +135,7 @@ const TELEGRAM_EVENTS = [
   "payment.paid",
   "payment.failed",
   "review.created",
+  "listing.reported",
   "listing.submitted",
   "listing.published",
   "user.registered",

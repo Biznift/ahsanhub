@@ -24,6 +24,7 @@ const GROUPS: { name: string; events: { key: string; label: string; description:
       { key: "user.registered", label: "New customer signup", description: "Someone created an account.", enabled: true },
       { key: "inquiry.created", label: "New contact inquiry", description: "The contact form was submitted.", enabled: true },
       { key: "listing.submitted", label: "Listing submitted", description: "A product is waiting for review.", enabled: true },
+      { key: "listing.reported", label: "Listing reported", description: "A visitor reported a product listing.", enabled: true },
       { key: "listing.published", label: "Listing published", description: "A product just went live.", enabled: true },
     ],
   },

@@ -29,6 +29,7 @@ const snapshotSchema = z.object({
   couponDeals: z.array(z.record(z.string(), z.unknown())).optional().default([]),
   promoPins: z.array(z.record(z.string(), z.unknown())).optional().default([]),
   listingMetrics: z.array(z.record(z.string(), z.unknown())).optional().default([]),
+  listingReports: z.array(z.record(z.string(), z.unknown())).optional().default([]),
 });
 
 function fileFor(id: string) {
@@ -59,6 +60,7 @@ export async function createBackup(automatic = false) {
     couponDeals,
     promoPins,
     listingMetrics,
+    listingReports,
   ] = await Promise.all([
     db.user.findMany(),
     db.category.findMany(),
@@ -81,6 +83,7 @@ export async function createBackup(automatic = false) {
     db.couponDeal.findMany(),
     db.promoPin.findMany(),
     db.listingMetric.findMany(),
+    db.listingReport.findMany(),
   ]);
   const body = JSON.stringify({
     createdAt: new Date().toISOString(),
@@ -105,6 +108,7 @@ export async function createBackup(automatic = false) {
     couponDeals,
     promoPins,
     listingMetrics,
+    listingReports,
   });
   const row = await db.backupFile.create({
     data: { name: `backup-${new Date().toISOString().replace(/[:.]/g, "-")}.json`, size: Buffer.byteLength(body), automatic },
@@ -162,6 +166,7 @@ export async function restoreBackup(id: string, adminId: string) {
     await tx.feedbackThread.deleteMany();
     await tx.vote.deleteMany();
     await tx.review.deleteMany();
+    await tx.listingReport.deleteMany();
     await tx.founder.deleteMany();
     await tx.listingCategory.deleteMany();
     await tx.listing.deleteMany();
@@ -199,5 +204,7 @@ export async function restoreBackup(id: string, adminId: string) {
     if (promoPins.length) await tx.promoPin.createMany({ data: promoPins.map(dates) as never });
     const listingMetrics = snapshot.listingMetrics.filter((row) => listingIds.has(String(row.listingId ?? "")));
     if (listingMetrics.length) await tx.listingMetric.createMany({ data: listingMetrics.map(dates) as never });
+    const listingReports = snapshot.listingReports.filter((row) => listingIds.has(String(row.listingId ?? "")));
+    if (listingReports.length) await tx.listingReport.createMany({ data: listingReports.map(dates) as never });
   });
 }

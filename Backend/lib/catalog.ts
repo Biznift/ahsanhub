@@ -291,6 +291,21 @@ export const MODULES: KitModule[] = [
     inNav: true,
   },
   {
+    slug: "reports",
+    href: "/admin/reports",
+    label: "Listing reports",
+    group: "Directory",
+    summary: "Private notes from visitors. A report does not change the listing until you review it.",
+    functions: ["Filter by status", "Read the reason and details", "Mark reviewed, actioned, or dismissed", "Open the listing", "Delete"],
+    endpoints: [
+      { method: "GET", path: "/api/admin/reports", summary: "List reports. Query: status" },
+      { method: "PATCH", path: "/api/admin/reports/:id", summary: "Set status to open, reviewed, dismissed, or actioned" },
+      { method: "DELETE", path: "/api/admin/reports/:id", summary: "Delete a report" },
+      { method: "POST", path: "/api/public/listings/:slug/reports", summary: "Report a published listing. No account. Body: reason, body, optional email." },
+    ],
+    inNav: true,
+  },
+  {
     slug: "branding",
     href: "/admin/branding",
     label: "Branding & SEO",
