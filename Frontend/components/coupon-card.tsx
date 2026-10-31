@@ -1,67 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ArrowUpRight, Check, Copy } from "lucide-react";
+import { ArrowUpRight, Check, Copy, Ticket } from "lucide-react";
 import type { CouponDeal } from "@/lib/types";
 import { hostOf, compactCount } from "@/lib/format";
 import { ListingLogo } from "@/components/listing-logo";
 import { KindBadge, PricingBadge } from "@/components/badges";
+import { useOpenedCoupon, type OpenedCoupon } from "@/components/use-opened-coupon";
 
 export function CouponGrid({ items }: { items: CouponDeal[] }) {
-  const router = useRouter();
-  const [codes, setCodes] = useState<Record<string, string>>({});
-
-  async function loadCodes() {
-    const response = await fetch("/api/account/coupon-codes", { cache: "no-store" });
-    if (!response.ok) {
-      setCodes({});
-      return;
-    }
-    const body = (await response.json()) as { items?: { id: string; code: string }[] };
-    const next: Record<string, string> = {};
-    for (const item of body.items ?? []) next[item.id] = item.code;
-    setCodes(next);
-  }
-
-  useEffect(() => {
-    loadCodes().catch(() => setCodes({}));
-  }, []);
-
   return (
-    <>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {items.map((deal) => (
-          <CouponCard
-            key={deal.id}
-            deal={deal}
-            code={codes[deal.id] ?? null}
-            onUnlock={() => {
-              const here = window.location.pathname + window.location.search;
-              router.push(`/signup?next=${encodeURIComponent(here)}`);
-            }}
-          />
-        ))}
-      </div>
-    </>
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {items.map((deal) => (
+        <CouponCard key={deal.id} deal={deal} />
+      ))}
+    </div>
   );
 }
 
-function CouponCard({ deal, code, onUnlock }: { deal: CouponDeal; code: string | null; onUnlock: () => void }) {
-  const [copied, setCopied] = useState(false);
+function CouponCard({ deal }: { deal: CouponDeal }) {
   const listing = deal.listing;
-
-  async function copy() {
-    if (!code) return;
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1400);
-    } catch {
-      setCopied(false);
-    }
-  }
+  const { opened, busy, view } = useOpenedCoupon(deal.id);
 
   return (
     <article className="flex h-full flex-col rounded-2xl border border-line bg-surface p-5">
@@ -81,38 +41,9 @@ function CouponCard({ deal, code, onUnlock }: { deal: CouponDeal; code: string |
         </div>
       </div>
       <p className="mt-4 line-clamp-2 text-[14px] leading-[1.55] text-muted">{listing.overview}</p>
-      {deal.note && <p className="mt-3 whitespace-pre-line text-[14px] leading-relaxed text-ink-soft">{deal.note}</p>}
-      <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-dashed border-brand-line bg-brand-soft px-3 py-2.5">
-        <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-text">Coupon code</p>
-          {code ? (
-            <p className="truncate font-mono text-[16px] font-semibold tracking-[0.04em] text-ink">{code}</p>
-          ) : (
-            <p className="font-mono text-[16px] font-semibold tracking-[0.28em] text-muted" aria-hidden="true">
-              ••••••••
-            </p>
-          )}
-        </div>
-        {code ? (
-          <button
-            type="button"
-            onClick={copy}
-            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-[13px] font-semibold text-ink transition hover:border-line-strong"
-          >
-            {copied ? <Check size={14} /> : <Copy size={14} />}
-            {copied ? "Copied" : "Copy"}
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={onUnlock}
-            className="inline-flex h-9 shrink-0 items-center rounded-lg border border-line bg-surface px-3 text-[13px] font-semibold text-ink transition hover:border-line-strong"
-          >
-            View code
-          </button>
-        )}
+      <div className="mt-4">
+        <CouponBoxes title={deal.title} opened={opened} busy={busy} onView={view} />
       </div>
-      {!code && <p className="sr-only">The coupon code is hidden until you sign in.</p>}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         {deal.action ? (
           <a
@@ -137,5 +68,94 @@ function CouponCard({ deal, code, onUnlock }: { deal: CouponDeal; code: string |
         </p>
       )}
     </article>
+  );
+}
+
+export function ProductCoupon({ dealId, title }: { dealId: string; title: string }) {
+  const { opened, busy, view } = useOpenedCoupon(dealId);
+  return (
+    <div className="rounded-2xl border border-brand-line bg-brand-soft p-5">
+      <p className="flex items-center gap-1.5 text-[13px] font-semibold text-brand-text">
+        <Ticket size={15} /> Coupon code
+      </p>
+      <div className="mt-3">
+        <CouponBoxes title={title} opened={opened} busy={busy} onView={view} />
+      </div>
+    </div>
+  );
+}
+
+function CouponBoxes({
+  title,
+  opened,
+  busy,
+  onView,
+}: {
+  title: string;
+  opened: OpenedCoupon | null;
+  busy: boolean;
+  onView: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    if (!opened?.code) return;
+    try {
+      await navigator.clipboard.writeText(opened.code);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1400);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {title.trim() && (
+        <p className="rounded-xl border border-line bg-bg px-3 py-2.5 text-[15px] font-semibold leading-snug text-ink">{title}</p>
+      )}
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-dashed border-brand-line bg-brand-soft px-3 py-2.5">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-text">Coupon code</p>
+          {opened ? (
+            <p className="truncate font-mono text-[16px] font-semibold tracking-[0.04em] text-ink">{opened.code || "No code"}</p>
+          ) : (
+            <p className="font-mono text-[16px] font-semibold tracking-[0.28em] text-muted" aria-hidden="true">
+              ••••••••
+            </p>
+          )}
+        </div>
+        {opened ? (
+          <button
+            type="button"
+            onClick={copy}
+            disabled={!opened.code}
+            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-[13px] font-semibold text-ink transition hover:border-line-strong disabled:opacity-50"
+          >
+            {copied ? <Check size={14} /> : <Copy size={14} />}
+            {copied ? "Copied" : "Copy"}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onView}
+            disabled={busy}
+            className="inline-flex h-9 shrink-0 items-center rounded-lg border border-line bg-surface px-3 text-[13px] font-semibold text-ink transition hover:border-line-strong disabled:opacity-60"
+          >
+            {busy ? "Opening…" : "View coupon code"}
+          </button>
+        )}
+      </div>
+      {opened ? (
+        <div className="rounded-xl border border-line bg-bg px-3 py-2.5">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">How to use it</p>
+          <p className="mt-1 whitespace-pre-line text-[14px] leading-relaxed text-ink-soft">
+            {opened.note.trim() || "No extra instructions for this code."}
+          </p>
+        </div>
+      ) : (
+        <p className="sr-only">The coupon code and instructions stay hidden until you view the coupon.</p>
+      )}
+    </div>
   );
 }

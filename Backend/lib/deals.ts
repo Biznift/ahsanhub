@@ -11,12 +11,14 @@ export const dealInclude = {
 type DealRow = Prisma.CouponDealGetPayload<{ include: typeof dealInclude }>;
 
 const code = z.string().trim().min(2, "Coupon code is too short.").max(40, "Coupon code is too long.");
-const note = z.string().trim().max(500);
+const title = z.string().trim().min(2, "Add a short offer title.").max(80, "Keep the offer title short.");
+const note = z.string().trim().min(10, "Explain how to use this code.").max(500);
 
 export const createDealSchema = z.object({
   listingId: z.string().trim().min(1, "Pick a product."),
   code,
-  note: note.optional(),
+  title,
+  note,
   ctaEnabled: z.boolean().optional(),
   ctaLabel: z.string().trim().max(40).optional(),
   ctaUrl: z.string().trim().max(500).optional(),
@@ -28,6 +30,7 @@ export const patchDealSchema = z
   .object({
     listingId: z.string().trim().min(1, "Pick a product."),
     code,
+    title,
     note,
     ctaEnabled: z.boolean(),
     ctaLabel: z.string().trim().max(40),
@@ -72,6 +75,7 @@ export async function prepareDeal(
   return {
     ...(input.listingId ? { listingId } : existing ? {} : { listingId }),
     ...(input.code !== undefined ? { code: input.code } : {}),
+    ...(input.title !== undefined ? { title: input.title } : {}),
     ...(input.note !== undefined ? { note: input.note } : {}),
     ...(input.ctaEnabled !== undefined || input.ctaUrl !== undefined || !existing ? { ctaEnabled, ctaUrl } : {}),
     ...(input.ctaLabel !== undefined ? { ctaLabel: input.ctaLabel } : {}),
@@ -84,6 +88,7 @@ export function toAdminDeal(row: DealRow) {
   return {
     id: row.id,
     code: row.code,
+    title: row.title,
     note: row.note,
     ctaEnabled: row.ctaEnabled,
     ctaLabel: row.ctaLabel,
@@ -104,14 +109,14 @@ export function toAdminDeal(row: DealRow) {
 }
 
 /** Creates, updates, or removes the coupon that was submitted with the listing. Other deals on the same product stay. */
-export async function syncListingCoupon(listingId: string, coupon: { code: string; note: string } | null) {
+export async function syncListingCoupon(listingId: string, coupon: { code: string; title: string; note: string } | null) {
   const existing = await db.couponDeal.findFirst({ where: { listingId, fromListing: true }, orderBy: { createdAt: "asc" } });
   if (!coupon) {
     if (existing) await db.couponDeal.delete({ where: { id: existing.id } });
     return;
   }
   if (existing) {
-    await db.couponDeal.update({ where: { id: existing.id }, data: { code: coupon.code, note: coupon.note } });
+    await db.couponDeal.update({ where: { id: existing.id }, data: { code: coupon.code, title: coupon.title, note: coupon.note } });
     return;
   }
   const last = await db.couponDeal.aggregate({ _max: { sortOrder: true } });
@@ -119,6 +124,7 @@ export async function syncListingCoupon(listingId: string, coupon: { code: strin
     data: {
       listingId,
       code: coupon.code,
+      title: coupon.title,
       note: coupon.note,
       fromListing: true,
       active: true,
@@ -138,7 +144,7 @@ export function toPublicDeal(row: DealRow) {
       : null;
   return {
     id: row.id,
-    note: row.note,
+    title: row.title,
     action,
     listing: toCard(row.listing, { includeHidden: false }),
   };

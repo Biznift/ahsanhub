@@ -1,14 +1,16 @@
 import { db } from "@/lib/db";
-import { ok, route } from "@/lib/http";
+import { HttpError, ok, route } from "@/lib/http";
 import { requireUser } from "@/lib/auth";
 
-/** Codes only. The public list never includes them. */
-export const GET = route(async () => {
+/** One code, and its instructions, after the visitor asks to view it. The public list never includes either. */
+export const GET = route(async (request) => {
   await requireUser();
-  const rows = await db.couponDeal.findMany({
-    where: { active: true, listing: { status: "published" } },
-    select: { id: true, code: true },
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+  const id = new URL(request.url).searchParams.get("id")?.trim() ?? "";
+  if (!id) throw new HttpError(400, "Choose a coupon.");
+  const row = await db.couponDeal.findFirst({
+    where: { id, active: true, listing: { status: "published" } },
+    select: { id: true, code: true, note: true },
   });
-  return ok({ items: rows }, { headers: { "cache-control": "no-store" } });
+  if (!row) throw new HttpError(404, "That coupon is not available.");
+  return ok(row, { headers: { "cache-control": "no-store" } });
 });

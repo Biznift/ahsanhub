@@ -73,6 +73,7 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
   );
   const [couponOn, setCouponOn] = useState(Boolean(existing?.couponCode));
   const [couponCode, setCouponCode] = useState(existing?.couponCode ?? "");
+  const [couponTitle, setCouponTitle] = useState(existing?.couponTitle ?? "");
   const [couponNote, setCouponNote] = useState(existing?.couponNote ?? "");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -101,6 +102,7 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
     if (draft.categoryIds.length + draft.proposedCategories.length === 0) return fail("Pick at least one category.", "company");
     if (textLength < 80) return fail("The description needs at least 80 characters.", "description");
     if (couponOn && couponCode.trim().length < 2) return fail("Enter the coupon code.", "coupon");
+    if (couponOn && couponTitle.trim().length < 2) return fail("Add a short offer title, such as Get 20% off.", "coupon");
     if (couponOn && couponNote.trim().length < 10) return fail("Explain how and where to use this coupon code.", "coupon");
 
     const form = new FormData();
@@ -114,6 +116,7 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
         bannerUrl,
         hasCoupon: couponOn,
         couponCode: couponOn ? couponCode.trim() : "",
+        couponTitle: couponOn ? couponTitle.trim() : "",
         couponNote: couponOn ? couponNote.trim() : "",
         founders: founders
           .filter((founder) => founder.name.trim())
@@ -333,7 +336,7 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
           id="coupon"
           index={6}
           title="Coupon code"
-          description="Optional. Turn this on only if you have a code people can use. After the listing is approved, the product stays in the directory and the code also appears on the coupon page."
+          description="Optional. Turn this on only if you have a code people can use. Visitors see the offer title first. The code and the instructions open only when they view the coupon. After the listing is approved, the product stays in the directory and the deal also appears on the coupon page."
         >
           <button
             type="button"
@@ -355,7 +358,10 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
               <Field label="Coupon code" required hint="The exact code someone copies. Letters and numbers, up to 40 characters.">
                 <Input value={couponCode} onChange={setCouponCode} required minLength={2} maxLength={40} placeholder="AH10" className="font-mono tracking-wide" autoComplete="off" />
               </Field>
-              <Field label="How and where to use it" required hint={`${couponNote.trim().length}/500. Say where to enter the code and what the person gets.`}>
+              <Field label="Offer title" required hint="A short line people see before they open the code. For example, Get 20% off.">
+                <Input value={couponTitle} onChange={setCouponTitle} required minLength={2} maxLength={80} placeholder="Get 20% off" autoComplete="off" />
+              </Field>
+              <Field label="How to use it" required hint={`${couponNote.trim().length}/500. Where to enter the code and what it covers. This stays hidden until someone views the coupon.`}>
                 <textarea
                   value={couponNote}
                   onChange={(event) => setCouponNote(event.target.value)}
@@ -363,7 +369,7 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
                   minLength={10}
                   maxLength={500}
                   rows={4}
-                  placeholder="Enter AH10 at checkout on example.com. It takes 20% off the yearly plan. The code does not apply to monthly billing."
+                  placeholder="Enter AH10 at checkout on example.com. It covers the yearly plan and does not apply to monthly billing."
                   className="w-full resize-y rounded-xl border border-line bg-bg px-3.5 py-3 text-[15px] leading-relaxed text-ink outline-none transition placeholder:text-muted focus:border-brand"
                 />
               </Field>

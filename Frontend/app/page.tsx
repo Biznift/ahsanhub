@@ -115,7 +115,7 @@ export default async function HomePage() {
             <SectionHeader
               eyebrow="Special deals"
               title="Coupon codes"
-              description="Deals for products already on Ahsan Hub. The code is hidden until you have an account. Sign up with your name, email, phone, and password, then you come back to this page."
+              description="Deals for products already on Ahsan Hub. The offer title is visible. Press View coupon code to open the code and the instructions. Sign up if you need an account, and you come back here with that code open. A refresh hides it again."
               href="/coupons"
             />
             <CouponGrid items={deals} />

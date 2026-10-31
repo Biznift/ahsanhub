@@ -3,7 +3,7 @@ import { cardInclude, toCard } from "@/lib/directory";
 
 export type PromoOffer = { dealId: string; label: string };
 
-type Deal = { id: string; note: string; fromListing: boolean };
+type Deal = { id: string; title: string; note: string; fromListing: boolean };
 
 type Candidate = {
   id: string;
@@ -14,9 +14,11 @@ type Candidate = {
   card: ReturnType<typeof toCard> & { offer: PromoOffer | null };
 };
 
-/** "20% off" when the note states a percent, otherwise a plain discount line. The code stays private. */
+/** The offer title when one is set. Otherwise a percent from the instructions, or a plain discount line. The code stays private. */
 export function couponOffer(deal: Deal | null): PromoOffer | null {
   if (!deal) return null;
+  const title = deal.title.trim();
+  if (title) return { dealId: deal.id, label: title };
   const match = deal.note.match(/(\d{1,3})\s*%/);
   const percent = match ? Number(match[1]) : null;
   const label = percent && percent > 0 && percent <= 100 ? `${percent}% off` : "Discount available";
@@ -77,7 +79,7 @@ export async function pickPromos(input: { limit: number; categories: string[]; e
       promoPin: { select: { id: true } },
       couponDeals: {
         where: { active: true },
-        select: { id: true, note: true, fromListing: true },
+        select: { id: true, title: true, note: true, fromListing: true },
         orderBy: { sortOrder: "asc" },
       },
     },

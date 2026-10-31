@@ -136,6 +136,7 @@ export const listingSchema = z
     bannerUrl: z.string().trim().max(2000).optional(),
     hasCoupon: z.boolean().default(false),
     couponCode: z.string().trim().max(40).default(""),
+    couponTitle: z.string().trim().max(80).default(""),
     couponNote: z.string().trim().max(500).default(""),
   })
   .superRefine((value, ctx) => {
@@ -148,6 +149,9 @@ export const listingSchema = z
     if (total > 5) ctx.addIssue({ code: "custom", message: "Pick up to 5 categories.", path: ["categoryIds"] });
     if (!value.hasCoupon) return;
     if (value.couponCode.length < 2) ctx.addIssue({ code: "custom", message: "Enter the coupon code.", path: ["couponCode"] });
+    if (value.couponTitle.length < 2) {
+      ctx.addIssue({ code: "custom", message: "Add a short offer title, such as Get 20% off.", path: ["couponTitle"] });
+    }
     if (value.couponNote.length < 10) {
       ctx.addIssue({ code: "custom", message: "Explain how and where to use this coupon code.", path: ["couponNote"] });
     }
@@ -286,7 +290,7 @@ export async function prepareListing(form: FormData, input: ListingInput, existi
     })),
     categoryIds,
     alternativeIds,
-    coupon: input.hasCoupon ? { code: input.couponCode, note: input.couponNote } : null,
+    coupon: input.hasCoupon ? { code: input.couponCode, title: input.couponTitle, note: input.couponNote } : null,
     stale: stale as string[],
   };
 }
@@ -344,7 +348,7 @@ export function toCard(row: CardRow, options?: { includeHidden?: boolean }) {
 export const detailInclude = {
   ...cardInclude,
   founders: { orderBy: { sortOrder: "asc" as const } },
-  couponDeals: { select: { code: true, note: true, active: true, fromListing: true }, orderBy: { sortOrder: "asc" as const } },
+  couponDeals: { select: { id: true, code: true, title: true, note: true, active: true, fromListing: true }, orderBy: { sortOrder: "asc" as const } },
 } satisfies Prisma.ListingInclude;
 
 type DetailRow = Prisma.ListingGetPayload<{ include: typeof detailInclude }>;
@@ -372,11 +376,11 @@ export function toDetail(row: DetailRow, options?: { includeHidden?: boolean }) 
   };
 }
 
-/** Usage instructions for a live deal. The code itself stays off the public listing. */
-function publicCoupon(deals: { note: string; active: boolean; fromListing: boolean }[]) {
+/** Offer title only. The code and the instructions stay off the public listing until someone views the coupon. */
+function publicCoupon(deals: { id: string; title: string; active: boolean; fromListing: boolean }[]) {
   const live = deals.filter((deal) => deal.active);
   const deal = live.find((item) => item.fromListing) ?? live[0];
-  return deal ? { note: deal.note } : null;
+  return deal ? { id: deal.id, title: deal.title } : null;
 }
 
 /** Same as the detail shape plus the private fields an owner or admin edits. */
@@ -390,6 +394,7 @@ export function toEditable(row: DetailRow) {
     rejectImage: row.rejectImage,
     categoryIds: row.categories.filter((item) => item.category.status !== "rejected").map((item) => item.categoryId),
     couponCode: row.couponDeals.find((deal) => deal.fromListing)?.code ?? "",
+    couponTitle: row.couponDeals.find((deal) => deal.fromListing)?.title ?? "",
     couponNote: row.couponDeals.find((deal) => deal.fromListing)?.note ?? "",
     createdAt: row.createdAt.toISOString(),
   };

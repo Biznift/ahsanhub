@@ -40,7 +40,7 @@ export type ListingDetail = ListingCard & {
   halalNote: string;
   socials: Socials;
   founders: Founder[];
-  coupon: { note: string } | null;
+  coupon: { id: string; title: string } | null;
   updatedAt: string;
   rating: Rating;
   related: ListingCard[];
@@ -51,6 +51,7 @@ export type EditableListing = Omit<ListingDetail, "related" | "rating"> & {
   contactEmail: string;
   categoryIds: string[];
   couponCode: string;
+  couponTitle: string;
   couponNote: string;
   rejectNote: string;
   rejectImage: string | null;
@@ -66,7 +67,7 @@ export type CouponAction = { label: string; url: string; kind: "website" | "offe
 
 export type CouponDeal = {
   id: string;
-  note: string;
+  title: string;
   action: CouponAction | null;
   listing: ListingCard;
 };

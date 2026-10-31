@@ -37,6 +37,7 @@ export type ListingCopySource = {
   founders: { name: string; role: string; bio: string; socials: Record<string, string> }[];
   alternatives?: { name: string }[];
   couponCode?: string;
+  couponTitle?: string;
   couponNote?: string;
 };
 
@@ -95,7 +96,8 @@ export function formatListingCopy(item: ListingCopySource) {
     founders.length > 0 && `Founders:\n${founders.map((line) => `- ${line}`).join("\n")}`,
     socials.length > 0 && socials.join("\n"),
     alternatives.length > 0 && `Alternatives: ${alternatives.join(", ")}`,
-    item.couponCode && `Coupon: ${item.couponCode}${item.couponNote ? ` — ${item.couponNote}` : ""}`,
+    item.couponCode &&
+      [`Coupon: ${item.couponCode}`, item.couponTitle && `Offer: ${item.couponTitle}`, item.couponNote].filter(Boolean).join("\n"),
   ]
     .filter(Boolean)
     .join("\n\n");

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Check, Copy } from "lucide-react";
+import { useOpenedCoupon } from "@/components/use-opened-coupon";
 
 export function trackPromo(kind: "impression" | "click" | "coupon", listingId: string) {
   const body = JSON.stringify({ kind, listingId });
@@ -14,38 +14,23 @@ export function trackPromo(kind: "impression" | "click" | "coupon", listingId: s
 }
 
 export function FeatureOffer({ dealId, label, listingId }: { dealId: string; label: string; listingId: string }) {
-  const router = useRouter();
-  const [code, setCode] = useState<string | null>(null);
+  const { opened, busy, view } = useOpenedCoupon(dealId);
   const [copied, setCopied] = useState(false);
-  const [busy, setBusy] = useState(false);
 
-  async function open(event: React.MouseEvent) {
+  function open(event: React.MouseEvent) {
     event.preventDefault();
     event.stopPropagation();
-    if (busy || code) return;
+    if (busy || opened) return;
     trackPromo("coupon", listingId);
-    setBusy(true);
-    try {
-      const response = await fetch("/api/account/coupon-codes", { cache: "no-store" });
-      if (response.status === 401) {
-        const next = window.location.pathname + window.location.search;
-        router.push(`/login?next=${encodeURIComponent(next)}`);
-        return;
-      }
-      if (!response.ok) return;
-      const body = (await response.json()) as { items?: { id: string; code: string }[] };
-      setCode(body.items?.find((item) => item.id === dealId)?.code ?? "");
-    } finally {
-      setBusy(false);
-    }
+    view();
   }
 
   async function copy(event: React.MouseEvent) {
     event.preventDefault();
     event.stopPropagation();
-    if (!code) return;
+    if (!opened?.code) return;
     try {
-      await navigator.clipboard.writeText(code);
+      await navigator.clipboard.writeText(opened.code);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1400);
     } catch {
@@ -54,21 +39,27 @@ export function FeatureOffer({ dealId, label, listingId }: { dealId: string; lab
   }
 
   return (
-    <button
-      type="button"
-      data-promo-coupon
-      onClick={code ? copy : open}
-      className="relative z-20 mt-3 flex w-full flex-wrap items-center justify-between gap-2 rounded-xl border border-dashed border-brand-line bg-brand-soft px-3 py-2 text-left"
-    >
-      <span className="text-[13px] font-semibold text-brand-text">{label}</span>
-      {code ? (
-        <span className="inline-flex items-center gap-1.5 font-mono text-[13px] font-semibold text-ink">
-          {code || "No code"}
-          {code && (copied ? <Check size={13} /> : <Copy size={13} />)}
-        </span>
-      ) : (
-        <span className="text-[13px] font-semibold text-ink">{busy ? "Opening…" : "View coupon code"}</span>
+    <div data-promo-coupon className="relative z-20 mt-3">
+      <button
+        type="button"
+        onClick={opened ? copy : open}
+        className="flex w-full flex-wrap items-center justify-between gap-2 rounded-xl border border-dashed border-brand-line bg-brand-soft px-3 py-2 text-left"
+      >
+        <span className="text-[13px] font-semibold text-brand-text">{label}</span>
+        {opened ? (
+          <span className="inline-flex items-center gap-1.5 font-mono text-[13px] font-semibold text-ink">
+            {opened.code || "No code"}
+            {opened.code && (copied ? <Check size={13} /> : <Copy size={13} />)}
+          </span>
+        ) : (
+          <span className="text-[13px] font-semibold text-ink">{busy ? "Opening…" : "View coupon code"}</span>
+        )}
+      </button>
+      {opened && (
+        <p className="mt-2 whitespace-pre-line rounded-xl border border-line bg-bg px-3 py-2 text-[12px] leading-relaxed text-ink-soft">
+          {opened.note.trim() || "No extra instructions for this code."}
+        </p>
       )}
-    </button>
+    </div>
   );
 }

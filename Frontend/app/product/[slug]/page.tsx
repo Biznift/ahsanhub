@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowUpRight, BadgeCheck, Ticket } from "lucide-react";
+import { ArrowUpRight, BadgeCheck } from "lucide-react";
 import { getListing, getPromos, getReviews } from "@/lib/api";
 import { interestParam } from "@/lib/interest";
 import { PLATFORM_LABEL, PRICING_LABEL, SITE_URL, absolute, compactCount, formatDate, hostOf } from "@/lib/format";
@@ -18,6 +18,7 @@ import { ReviewForm } from "@/components/review-form";
 import { ReportListing } from "@/components/report-listing";
 import { Stars } from "@/components/stars";
 import { JsonLd } from "@/components/json-ld";
+import { ProductCoupon } from "@/components/coupon-card";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -242,21 +243,7 @@ export default async function ProductPage({ params }: Props) {
             </dl>
           </div>
 
-          {listing.coupon && (
-            <div className="rounded-2xl border border-brand-line bg-brand-soft p-5">
-              <p className="flex items-center gap-1.5 text-[13px] font-semibold text-brand-text">
-                <Ticket size={15} /> Coupon code
-              </p>
-              {listing.coupon.note ? (
-                <p className="mt-2 whitespace-pre-line text-[14px] leading-relaxed text-ink-soft">{listing.coupon.note}</p>
-              ) : (
-                <p className="mt-2 text-[14px] leading-relaxed text-ink-soft">This product has a coupon code.</p>
-              )}
-              <Link href="/coupons" className="mt-3 inline-flex text-[13px] font-semibold text-brand-text">
-                View the code
-              </Link>
-            </div>
-          )}
+          {listing.coupon && <ProductCoupon dealId={listing.coupon.id} title={listing.coupon.title} />}
 
           {listing.halalNote && (
             <div className="rounded-2xl border border-brand-line bg-brand-soft p-5">

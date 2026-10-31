@@ -26,7 +26,8 @@ export const POST = route(async (request) => {
       data: {
         listingId: data.listingId!,
         code: input.code,
-        note: input.note ?? "",
+        title: input.title,
+        note: input.note,
         ctaEnabled: data.ctaEnabled ?? false,
         ctaLabel: input.ctaLabel ?? "",
         ctaUrl: data.ctaUrl ?? "",

@@ -38,6 +38,7 @@ export type EditableListing = {
   founders: { id: string; name: string; role: string; bio: string; photo: string | null; socials: Record<string, string> }[];
   alternatives?: { id: string; name: string; slug: string }[];
   couponCode?: string;
+  couponTitle?: string;
   couponNote?: string;
 };
 
@@ -54,6 +55,7 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
   const [founders, setFounders] = useState<FounderDraft[]>(listing.founders.map((item) => ({ ...item, photoUrl: "", file: null, removePhoto: false })));
   const [couponOn, setCouponOn] = useState(Boolean(listing.couponCode));
   const [couponCode, setCouponCode] = useState(listing.couponCode ?? "");
+  const [couponTitle, setCouponTitle] = useState(listing.couponTitle ?? "");
   const [couponNote, setCouponNote] = useState(listing.couponNote ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +66,18 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (couponOn && couponCode.trim().length < 2) {
+      setError("Enter the coupon code.");
+      return;
+    }
+    if (couponOn && couponTitle.trim().length < 2) {
+      setError("Add a short offer title, such as Get 20% off.");
+      return;
+    }
+    if (couponOn && couponNote.trim().length < 10) {
+      setError("Explain how to use this coupon code.");
+      return;
+    }
     setBusy(true);
     setError(null);
     const form = new FormData();
@@ -87,6 +101,7 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
         bannerUrl,
         hasCoupon: couponOn,
         couponCode: couponOn ? couponCode.trim() : "",
+        couponTitle: couponOn ? couponTitle.trim() : "",
         couponNote: couponOn ? couponNote.trim() : "",
         founders: founders.map(({ id, name, role, bio, socials, removePhoto, photoUrl }) => ({ id, name, role, bio, socials, removePhoto, photoUrl })),
       }),
@@ -334,7 +349,7 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
         </div>
       </Card>
 
-      <Card title="Coupon code" description="Optional. Turn this on when the product has a code. After the listing is published, it stays in the directory and the code also shows on the coupon page.">
+      <Card title="Coupon code" description="Optional. Turn this on when the product has a code. Visitors see the offer title first. The code and the instructions open only when they view the coupon. After the listing is published, it stays in the directory and the deal also shows on the coupon page.">
         <div className="flex items-center justify-between gap-4">
           <p className="text-sm font-medium text-[#1d2939]">This listing includes a coupon code</p>
           <Switch label="Coupon code" checked={couponOn} onChange={setCouponOn} />
@@ -344,14 +359,17 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
             <Field label="Coupon code">
               <TextInput value={couponCode} maxLength={40} onChange={(event) => setCouponCode(event.target.value)} required className="font-mono" placeholder="AH10" />
             </Field>
-            <Field label="How and where to use it">
+            <Field label="Offer title">
+              <TextInput value={couponTitle} maxLength={80} onChange={(event) => setCouponTitle(event.target.value)} required placeholder="Get 20% off" />
+            </Field>
+            <Field label="How to use it">
               <textarea
                 value={couponNote}
                 rows={4}
                 maxLength={500}
                 required
                 onChange={(event) => setCouponNote(event.target.value)}
-                placeholder="Where to enter the code, and what the person gets."
+                placeholder="Where to enter the code, and which plan it covers. This stays hidden until someone views the coupon."
                 className={controlClass}
               />
             </Field>

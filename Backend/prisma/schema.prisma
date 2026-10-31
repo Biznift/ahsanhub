@@ -234,6 +234,7 @@ model CouponDeal {
   listingId  String
   listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
   code       String
+  title      String   @default("")
   note       String   @default("")
   ctaEnabled Boolean  @default(false)
   ctaLabel   String   @default("")

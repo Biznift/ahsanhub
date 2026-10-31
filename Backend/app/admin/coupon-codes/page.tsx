@@ -20,6 +20,7 @@ type ListingPick = {
 type Deal = {
   id: string;
   code: string;
+  title: string;
   note: string;
   ctaEnabled: boolean;
   ctaLabel: string;
@@ -29,7 +30,7 @@ type Deal = {
   listing: ListingPick;
 };
 
-const emptyForm = { code: "", note: "", ctaEnabled: false, ctaLabel: "", ctaUrl: "", active: true };
+const emptyForm = { code: "", title: "", note: "", ctaEnabled: false, ctaLabel: "", ctaUrl: "", active: true };
 
 export default function CouponCodesPage() {
   const module = moduleBySlug("coupon-codes");
@@ -74,6 +75,7 @@ export default function CouponCodesPage() {
     setSelected(deal.listing);
     setForm({
       code: deal.code,
+      title: deal.title,
       note: deal.note,
       ctaEnabled: deal.ctaEnabled,
       ctaLabel: deal.ctaLabel,
@@ -88,10 +90,13 @@ export default function CouponCodesPage() {
     event.preventDefault();
     if (!selected) return setError("Pick a product that is already published.");
     if (form.code.trim().length < 2) return setError("Enter a coupon code.");
+    if (form.title.trim().length < 2) return setError("Add a short offer title, such as Get 20% off.");
+    if (form.note.trim().length < 10) return setError("Explain how to use this code.");
     if (form.ctaEnabled && !form.ctaUrl.trim()) return setError("Add the offer link, or turn the special call to action off.");
     const body = {
       listingId: selected.id,
       code: form.code.trim(),
+      title: form.title.trim(),
       note: form.note.trim(),
       ctaEnabled: form.ctaEnabled,
       ctaLabel: form.ctaLabel.trim(),
@@ -155,7 +160,7 @@ export default function CouponCodesPage() {
     <ModuleFrame module={module}>
       <Card
         title={editingId ? "Edit this deal" : "Add a coupon code"}
-        description="Choose a product that is already listed. Visitors can copy the code. The button opens the product website unless you turn on a special call to action."
+        description="Choose a product that is already listed. Visitors see the offer title first. The code and the instructions open only when they press View coupon code. The button opens the product website unless you turn on a special call to action."
       >
         <form onSubmit={save} className="grid gap-4">
           <Field label="Product">
@@ -214,13 +219,18 @@ export default function CouponCodesPage() {
             <Field label="Coupon code">
               <TextInput value={form.code} onChange={(event) => setField("code", event.target.value)} required maxLength={40} placeholder="AH10" className="font-mono" />
             </Field>
-            <Field label="How and where to use it">
+            <Field label="Offer title">
+              <TextInput value={form.title} onChange={(event) => setField("title", event.target.value)} required maxLength={80} placeholder="Get 20% off" />
+            </Field>
+            <Field label="How to use it">
               <textarea
                 value={form.note}
                 onChange={(event) => setField("note", event.target.value)}
+                required
+                minLength={10}
                 maxLength={500}
                 rows={3}
-                placeholder="Enter the code at checkout. Say which plan it covers."
+                placeholder="Enter the code at checkout. Say which plan it covers. This stays hidden until someone views the coupon."
                 className="w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 text-base text-[var(--text)] outline-none ring-[var(--ink)] focus:ring-2"
               />
             </Field>
@@ -281,6 +291,7 @@ export default function CouponCodesPage() {
                   <StatusPill status={deal.listing.status} />
                   {!deal.active && <span className="text-xs font-semibold text-[#667085]">Hidden</span>}
                 </div>
+                {deal.title && <p className="mt-1 text-sm font-medium text-[#1d2939]">{deal.title}</p>}
                 <p className="mt-1 font-mono text-sm font-semibold tracking-wide text-[#0b6e4f]">{deal.code}</p>
                 {deal.note && <p className="mt-1 text-sm text-[#475467]">{deal.note}</p>}
                 <p className="mt-1 flex items-center gap-1 text-xs text-[#667085]">
