@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { Plus, Trash2, X } from "lucide-react";
 import { Button, Field, SelectInput, TextInput, cn, controlClass } from "@/components/ui";
 import { RichText } from "@/components/rich-text";
-import { Card, Switch, useApi } from "@/components/admin-kit";
+import { Card, Switch, api, useApi } from "@/components/admin-kit";
 import { KIND_LABEL, LISTING_KINDS, type ListingKind } from "@/lib/kinds";
 
 export const SOCIALS = [
@@ -48,11 +48,12 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
   const categories = useApi<{ items: { id: string; name: string; hidden: boolean; kind: ListingKind; status: "pending" | "approved" | "rejected" }[] }>("/api/admin/categories");
   const [draft, setDraft] = useState({ ...listing, kind: listing.kind ?? "software", alternatives: listing.alternatives ?? [] });
   const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [logoUrl, setLogoUrl] = useState("");
+  const [logoUrl, setLogoUrl] = useState(listing.logo ?? "");
   const [bannerFile, setBannerFile] = useState<File | null>(null);
-  const [bannerUrl, setBannerUrl] = useState("");
+  const [bannerUrl, setBannerUrl] = useState(listing.banner ?? "");
   const [removeBanner, setRemoveBanner] = useState(false);
-  const [founders, setFounders] = useState<FounderDraft[]>(listing.founders.map((item) => ({ ...item, photoUrl: "", file: null, removePhoto: false })));
+  const [uploading, setUploading] = useState<"logo" | "banner" | `founder:${number}` | null>(null);
+  const [founders, setFounders] = useState<FounderDraft[]>(listing.founders.map((item) => ({ ...item, photoUrl: item.photo ?? "", file: null, removePhoto: false })));
   const [couponOn, setCouponOn] = useState(Boolean(listing.couponCode));
   const [couponCode, setCouponCode] = useState(listing.couponCode ?? "");
   const [couponTitle, setCouponTitle] = useState(listing.couponTitle ?? "");
@@ -64,8 +65,20 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
   const setFounder = (index: number, patch: Partial<FounderDraft>) =>
     setFounders((current) => current.map((item, at) => (at === index ? { ...item, ...patch } : item)));
 
+  async function uploadImage(file: File, purpose: "logo" | "banner" | "founder") {
+    const body = new FormData();
+    body.set("file", file);
+    body.set("purpose", purpose);
+    const saved = await api<{ path: string }>("/api/admin/media", { method: "POST", body });
+    return saved.path;
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (uploading) {
+      setError("Wait for the image upload to finish.");
+      return;
+    }
     if (couponOn && couponCode.trim().length < 2) {
       setError("Enter the coupon code.");
       return;
@@ -96,14 +109,22 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
         halalNote: draft.halalNote,
         socials: draft.socials,
         alternativeIds: draft.alternatives.map((item) => item.id),
-        removeBanner: bannerUrl.trim() ? false : removeBanner,
-        logoUrl,
-        bannerUrl,
+        removeBanner: bannerFile ? false : !bannerUrl.trim() && (removeBanner || Boolean(listing.banner)),
+        logoUrl: logoFile || logoUrl.trim() === (listing.logo ?? "").trim() ? "" : logoUrl.trim(),
+        bannerUrl: bannerFile || !bannerUrl.trim() || bannerUrl.trim() === (listing.banner ?? "").trim() ? "" : bannerUrl.trim(),
         hasCoupon: couponOn,
         couponCode: couponOn ? couponCode.trim() : "",
         couponTitle: couponOn ? couponTitle.trim() : "",
         couponNote: couponOn ? couponNote.trim() : "",
-        founders: founders.map(({ id, name, role, bio, socials, removePhoto, photoUrl }) => ({ id, name, role, bio, socials, removePhoto, photoUrl })),
+        founders: founders.map(({ id, name, role, bio, socials, removePhoto, photoUrl, photo, file }) => ({
+          id,
+          name,
+          role,
+          bio,
+          socials,
+          removePhoto,
+          photoUrl: file || removePhoto || photoUrl.trim() === (photo ?? "").trim() ? "" : photoUrl.trim(),
+        })),
       }),
     );
     form.set("email", draft.contactEmail);
@@ -210,7 +231,7 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
         </div>
       </Card>
 
-      <Card title="Logo and banner" description="Upload a file, or paste a Cloudinary link or any other image URL. Logo: square PNG, JPG or WebP, 512 × 512 recommended, under 2 MB. Banner: optional 16:9, 1600 × 900 recommended, under 5 MB.">
+      <Card title="Logo and banner" description="Upload a file, or paste a Cloudinary link or any other image URL. The link for the current image shows in the URL box, so you can copy it or replace it. Logo: square PNG, JPG or WebP, 512 × 512 recommended, under 2 MB. Banner: optional 16:9, 1600 × 900 recommended, under 5 MB.">
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <p className="mb-1.5 text-sm font-semibold text-[#344054]">Logo</p>
@@ -218,61 +239,93 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
             <input
               type="file"
               accept="image/png,image/jpeg,image/webp"
-              className="mt-2 w-full text-xs"
+              disabled={uploading === "logo"}
+              className="mt-2 w-full text-xs disabled:opacity-50"
               onChange={(event) => {
-                setLogoFile(event.target.files?.[0] ?? null);
-                if (event.target.files?.[0]) setLogoUrl("");
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (!file) return;
+                setLogoFile(file);
+                setUploading("logo");
+                setError(null);
+                uploadImage(file, "logo")
+                  .then((path) => {
+                    setLogoUrl(path);
+                    setLogoFile(null);
+                  })
+                  .catch((problem) => {
+                    setLogoFile(null);
+                    setError((problem as Error).message);
+                  })
+                  .finally(() => setUploading((current) => (current === "logo" ? null : current)));
               }}
             />
-            <Field label="or image URL">
-              <TextInput
-                value={logoUrl}
-                onChange={(event) => {
-                  setLogoUrl(event.target.value);
-                  if (event.target.value.trim()) setLogoFile(null);
-                }}
-                placeholder="https://res.cloudinary.com/… or any image link"
-                className="mt-1.5"
-              />
-            </Field>
+            {uploading === "logo" && <p className="mt-1 text-xs text-[#667085]">Uploading… the link will appear below.</p>}
+            <ImageUrlField
+              label="Image URL"
+              value={logoUrl}
+              placeholder="https://res.cloudinary.com/… or any image link"
+              onChange={(value) => {
+                setLogoUrl(value);
+                if (value.trim()) setLogoFile(null);
+              }}
+            />
           </div>
           <div>
             <p className="mb-1.5 text-sm font-semibold text-[#344054]">Banner</p>
-            <Preview src={bannerFile ? URL.createObjectURL(bannerFile) : bannerUrl.trim() ? bannerUrl.trim() : removeBanner ? null : draft.banner} className="aspect-video w-full max-w-md" />
+            <Preview src={bannerFile ? URL.createObjectURL(bannerFile) : bannerUrl.trim() || null} className="aspect-video w-full max-w-md" />
             <div className="mt-2 flex flex-wrap items-center gap-3">
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
-                className="text-xs"
+                disabled={uploading === "banner"}
+                className="text-xs disabled:opacity-50"
                 onChange={(event) => {
-                  const file = event.target.files?.[0] ?? null;
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (!file) return;
                   setBannerFile(file);
-                  if (file) {
-                    setBannerUrl("");
-                    setRemoveBanner(false);
-                  }
+                  setRemoveBanner(false);
+                  setUploading("banner");
+                  setError(null);
+                  uploadImage(file, "banner")
+                    .then((path) => {
+                      setBannerUrl(path);
+                      setBannerFile(null);
+                      setRemoveBanner(false);
+                    })
+                    .catch((problem) => {
+                      setBannerFile(null);
+                      setError((problem as Error).message);
+                    })
+                    .finally(() => setUploading((current) => (current === "banner" ? null : current)));
                 }}
               />
-              {draft.banner && !bannerFile && !bannerUrl.trim() && (
+              {(draft.banner || bannerUrl.trim()) && !bannerFile && (
                 <label className="flex items-center gap-1.5 text-sm text-[#475467]">
-                  <input type="checkbox" checked={removeBanner} onChange={(event) => setRemoveBanner(event.target.checked)} /> Remove banner
+                  <input
+                    type="checkbox"
+                    checked={removeBanner}
+                    onChange={(event) => {
+                      setRemoveBanner(event.target.checked);
+                      setBannerUrl(event.target.checked ? "" : (draft.banner ?? ""));
+                    }}
+                  />{" "}
+                  Remove banner
                 </label>
               )}
             </div>
-            <Field label="or image URL">
-              <TextInput
-                value={bannerUrl}
-                onChange={(event) => {
-                  setBannerUrl(event.target.value);
-                  if (event.target.value.trim()) {
-                    setBannerFile(null);
-                    setRemoveBanner(false);
-                  }
-                }}
-                placeholder="https://"
-                className="mt-1.5"
-              />
-            </Field>
+            {uploading === "banner" && <p className="mt-1 text-xs text-[#667085]">Uploading… the link will appear below.</p>}
+            <ImageUrlField
+              label="Image URL"
+              value={bannerUrl}
+              placeholder="https://res.cloudinary.com/… or any image link"
+              onChange={(value) => {
+                setBannerUrl(value);
+                setBannerFile(null);
+                setRemoveBanner(!value.trim() && Boolean(listing.banner));
+              }}
+            />
           </div>
         </div>
       </Card>
@@ -305,12 +358,25 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
                   <input
                     type="file"
                     accept="image/png,image/jpeg,image/webp"
-                    className="mt-2 w-24 text-[11px]"
+                    disabled={uploading === `founder:${index}`}
+                    className="mt-2 w-24 text-[11px] disabled:opacity-50"
                     onChange={(event) => {
-                      const file = event.target.files?.[0] ?? null;
-                      setFounder(index, file ? { file, photoUrl: "", removePhoto: false } : { file });
+                      const file = event.target.files?.[0];
+                      event.target.value = "";
+                      if (!file) return;
+                      setFounder(index, { file, removePhoto: false });
+                      setUploading(`founder:${index}`);
+                      setError(null);
+                      uploadImage(file, "founder")
+                        .then((path) => setFounder(index, { file: null, photoUrl: path, removePhoto: false }))
+                        .catch((problem) => {
+                          setFounder(index, { file: null });
+                          setError((problem as Error).message);
+                        })
+                        .finally(() => setUploading((current) => (current === `founder:${index}` ? null : current)));
                     }}
                   />
+                  {uploading === `founder:${index}` && <p className="mt-1 text-[11px] text-[#667085]">Uploading…</p>}
                 </div>
                 <Field label="Name">
                   <TextInput value={founder.name} onChange={(event) => setFounder(index, { name: event.target.value })} required />
@@ -322,23 +388,27 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
                   <Trash2 size={16} />
                 </button>
               </div>
-              <div className="mt-3">
-                <Field label="or photo URL">
-                  <TextInput
-                    value={founder.photoUrl}
-                    onChange={(event) => setFounder(index, event.target.value.trim() ? { photoUrl: event.target.value, file: null, removePhoto: false } : { photoUrl: event.target.value })}
-                    placeholder="https://res.cloudinary.com/… or any image link"
-                  />
-                </Field>
-              </div>
+              <ImageUrlField
+                label="Photo URL"
+                value={founder.photoUrl}
+                placeholder="https://res.cloudinary.com/… or any image link"
+                onChange={(value) => setFounder(index, value.trim() ? { photoUrl: value, file: null, removePhoto: false } : { photoUrl: value })}
+              />
               <div className="mt-3">
                 <Field label="Short bio">
                   <textarea value={founder.bio} rows={2} maxLength={600} onChange={(event) => setFounder(index, { bio: event.target.value })} className={controlClass} />
                 </Field>
               </div>
-              {founder.photo && !founder.file && (
+              {founder.photo && !founder.file && (founder.removePhoto || founder.photoUrl.trim() === (founder.photo ?? "").trim()) && (
                 <label className="mt-2 flex items-center gap-1.5 text-sm text-[#475467]">
-                  <input type="checkbox" checked={founder.removePhoto} onChange={(event) => setFounder(index, { removePhoto: event.target.checked })} /> Remove photo
+                  <input
+                    type="checkbox"
+                    checked={founder.removePhoto}
+                    onChange={(event) =>
+                      setFounder(index, event.target.checked ? { removePhoto: true, photoUrl: "", file: null } : { removePhoto: false, photoUrl: founder.photo ?? "" })
+                    }
+                  />{" "}
+                  Remove photo
                 </label>
               )}
               <div className="mt-3">
@@ -379,8 +449,8 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
 
       {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
       <div className="sticky bottom-0 -mx-1 flex justify-end border-t border-[#e6e8ef] bg-[#f5f6fa]/95 px-1 py-3">
-        <Button type="submit" disabled={busy}>
-          {busy ? "Saving…" : "Save content"}
+        <Button type="submit" disabled={busy || Boolean(uploading)}>
+          {busy ? "Saving…" : uploading ? "Uploading…" : "Save content"}
         </Button>
       </div>
     </form>
@@ -520,6 +590,35 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
     >
       {children}
     </button>
+  );
+}
+
+function ImageUrlField({ label, value, placeholder, onChange }: { label: string; value: string; placeholder: string; onChange: (value: string) => void }) {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <div className="mt-3">
+      <Field label={label}>
+        <TextInput value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} spellCheck={false} />
+      </Field>
+      {value.trim() && (
+        <button
+          type="button"
+          className="mt-1.5 text-xs font-medium text-[#0b6e4f]"
+          onClick={() => {
+            navigator.clipboard.writeText(value.trim()).then(
+              () => {
+                setCopied(true);
+                window.setTimeout(() => setCopied(false), 1500);
+              },
+              () => setCopied(false),
+            );
+          }}
+        >
+          {copied ? "Copied" : "Copy link"}
+        </button>
+      )}
+    </div>
   );
 }
 

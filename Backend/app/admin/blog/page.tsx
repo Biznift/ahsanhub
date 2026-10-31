@@ -132,9 +132,19 @@ export default function BlogPage() {
                     <TextInput
                       value={editing.cover}
                       onChange={(event) => setEditing({ ...editing, cover: event.target.value })}
-                      placeholder="or paste an image URL"
+                      placeholder="Uploaded link, or paste an image URL"
+                      spellCheck={false}
                       className="mt-2"
                     />
+                    {editing.cover.trim() && (
+                      <button
+                        type="button"
+                        className="mt-1.5 text-xs font-medium text-[#0b6e4f]"
+                        onClick={() => navigator.clipboard.writeText(editing.cover.trim()).catch(() => undefined)}
+                      >
+                        Copy link
+                      </button>
+                    )}
                     {editing.cover && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={editing.cover} alt="" className="mt-2 h-16 w-28 rounded-md border border-[#e6e8ef] object-cover" />

@@ -57,7 +57,7 @@ export function FeatureOffer({ dealId, label, listingId }: { dealId: string; lab
       </button>
       {opened && (
         <p className="mt-2 whitespace-pre-line rounded-xl border border-line bg-bg px-3 py-2 text-[12px] leading-relaxed text-ink-soft">
-          {opened.note.trim() || "No extra instructions for this code."}
+          {opened.note?.trim() || "No extra instructions for this code."}
         </p>
       )}
     </div>

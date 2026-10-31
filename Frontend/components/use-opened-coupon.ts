@@ -5,12 +5,33 @@ import { useRouter } from "next/navigation";
 
 export type OpenedCoupon = { code: string; note: string };
 
-async function fetchCoupon(dealId: string): Promise<OpenedCoupon | "signin" | "missing"> {
-  const response = await fetch(`/api/account/coupon-codes?id=${encodeURIComponent(dealId)}`, { cache: "no-store" });
-  if (response.status === 401) return "signin";
-  if (!response.ok) return "missing";
-  const body = (await response.json()) as { code?: string; note?: string };
+const requestInit = { cache: "no-store" as const, credentials: "same-origin" as const };
+
+function openedFrom(body: { code?: string; note?: string }): OpenedCoupon {
   return { code: body.code ?? "", note: body.note ?? "" };
+}
+
+async function signedIn() {
+  const response = await fetch("/api/auth/me", requestInit);
+  if (!response.ok) return false;
+  const body = (await response.json()) as { user?: unknown };
+  return Boolean(body.user);
+}
+
+async function couponFromList(dealId: string): Promise<OpenedCoupon | "missing"> {
+  const response = await fetch("/api/account/coupon-codes", requestInit);
+  if (!response.ok) return "missing";
+  const body = (await response.json()) as { items?: { id: string; code?: string; note?: string }[] };
+  const item = body.items?.find((row) => row.id === dealId);
+  return item ? openedFrom(item) : "missing";
+}
+
+async function fetchCoupon(dealId: string): Promise<OpenedCoupon | "signin" | "missing"> {
+  const response = await fetch(`/api/account/coupon-codes?id=${encodeURIComponent(dealId)}`, requestInit);
+  if (response.ok) return openedFrom((await response.json()) as { code?: string; note?: string });
+  if (response.status !== 401) return "missing";
+  if (!(await signedIn())) return "signin";
+  return couponFromList(dealId);
 }
 
 function clearReveal(dealId: string) {

@@ -15,7 +15,8 @@ export function ok<T>(data: T, init?: ResponseInit) {
 }
 
 export function fail(status: number, message: string) {
-  return NextResponse.json({ error: message }, { status });
+  const headers = status === 401 || status === 403 ? { "cache-control": "no-store" } : undefined;
+  return NextResponse.json({ error: message }, { status, headers });
 }
 
 type Handler<C> = (request: Request, context: C) => Promise<Response>;

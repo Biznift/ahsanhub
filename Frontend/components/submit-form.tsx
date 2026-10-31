@@ -63,13 +63,15 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
   }));
   const [textLength, setTextLength] = useState(existing ? 999 : 0);
   const [logo, setLogo] = useState<File | null>(null);
-  const [logoUrl, setLogoUrl] = useState("");
+  const [storedLogo, setStoredLogo] = useState<string | null>(existing?.logo ?? null);
+  const [logoUrl, setLogoUrl] = useState(existing?.logo ?? "");
   const [banner, setBanner] = useState<File | null>(null);
-  const [bannerUrl, setBannerUrl] = useState("");
+  const [bannerUrl, setBannerUrl] = useState(existing?.banner ?? "");
+  const [storedBanner, setStoredBanner] = useState<string | null>(existing?.banner ?? null);
   const [removeBanner, setRemoveBanner] = useState(false);
   const [alternatives, setAlternatives] = useState<AlternativeRef[]>(existing?.alternatives ?? []);
   const [founders, setFounders] = useState<FounderDraft[]>(() =>
-    existing?.founders.length ? existing.founders.map((founder) => ({ ...founder, key: newKey(), photoUrl: "", file: null, removePhoto: false })) : [emptyFounder()],
+    existing?.founders.length ? existing.founders.map((founder) => ({ ...founder, key: newKey(), photoUrl: founder.photo ?? "", file: null, removePhoto: false })) : [emptyFounder()],
   );
   const [couponOn, setCouponOn] = useState(Boolean(existing?.couponCode));
   const [couponCode, setCouponCode] = useState(existing?.couponCode ?? "");
@@ -120,7 +122,15 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
         couponNote: couponOn ? couponNote.trim() : "",
         founders: founders
           .filter((founder) => founder.name.trim())
-          .map(({ id, name, role, bio, socials, removePhoto, photoUrl }) => ({ id, name, role, bio, socials, removePhoto, photoUrl })),
+          .map(({ id, name, role, bio, socials, removePhoto, photoUrl, file }) => ({
+            id,
+            name,
+            role,
+            bio,
+            socials,
+            removePhoto,
+            photoUrl: file || removePhoto ? "" : photoUrl,
+          })),
       }),
     );
     if (logo) form.set("logo", logo);
@@ -139,9 +149,20 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error ?? "Something went wrong. Please try again.");
       if (editing) {
+        const savedListing = body as EditableListing;
         setSaved(true);
         setLogo(null);
         setBanner(null);
+        setStoredLogo(savedListing.logo ?? null);
+        setLogoUrl(savedListing.logo ?? "");
+        setBannerUrl(savedListing.banner ?? "");
+        setStoredBanner(savedListing.banner ?? null);
+        setRemoveBanner(false);
+        setFounders(
+          savedListing.founders.length
+            ? savedListing.founders.map((founder) => ({ ...founder, key: newKey(), photoUrl: founder.photo ?? "", file: null, removePhoto: false }))
+            : [emptyFounder()],
+        );
         window.setTimeout(() => setSaved(false), 3000);
       } else {
         setDone(body);
@@ -270,7 +291,7 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
               rule={IMAGE_RULES.logo}
               file={logo}
               url={logoUrl}
-              current={existing?.logo ?? null}
+              current={storedLogo}
               onFile={setLogo}
               onUrl={setLogoUrl}
               shape="square"
@@ -281,7 +302,7 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
               rule={IMAGE_RULES.banner}
               file={banner}
               url={bannerUrl}
-              current={removeBanner ? null : (existing?.banner ?? null)}
+              current={removeBanner ? null : storedBanner}
               onFile={(file) => {
                 setBanner(file);
                 if (file) setRemoveBanner(false);
@@ -290,7 +311,7 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
                 setBannerUrl(value);
                 if (value.trim()) setRemoveBanner(false);
               }}
-              onRemoveCurrent={existing?.banner ? () => setRemoveBanner(true) : undefined}
+              onRemoveCurrent={storedBanner ? () => { setRemoveBanner(true); setBannerUrl(""); } : undefined}
               shape="wide"
             />
           </div>
@@ -501,6 +522,27 @@ function Field({ label, required, hint, children }: { label: string; required?: 
   );
 }
 
+function CopyLink({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      className="mt-1.5 text-[12.5px] font-medium text-brand-text"
+      onClick={() => {
+        navigator.clipboard.writeText(value).then(
+          () => {
+            setCopied(true);
+            window.setTimeout(() => setCopied(false), 1500);
+          },
+          () => setCopied(false),
+        );
+      }}
+    >
+      {copied ? "Copied" : "Copy link"}
+    </button>
+  );
+}
+
 function Input({ value, onChange, className, ...rest }: Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange" | "value"> & { value: string; onChange: (value: string) => void }) {
   return (
     <input
@@ -597,8 +639,12 @@ function ImageDrop({
         <button
           type="button"
           onClick={() => {
-            if (file) onFile(null);
-            else onRemoveCurrent?.();
+            if (file) {
+              onFile(null);
+              onUrl?.(current ?? "");
+              return;
+            }
+            onRemoveCurrent?.();
           }}
           className="mt-1 inline-flex items-center gap-1 text-[13px] font-medium text-muted hover:text-danger"
         >
@@ -606,17 +652,22 @@ function ImageDrop({
         </button>
       )}
       {onUrl && shape !== "round" && (
-        <label className="mt-3 block">
-          <span className="mb-1.5 block text-[13px] font-medium text-ink">or paste an image URL</span>
-          <Input
-            value={url}
-            onChange={(value) => {
-              onUrl(value);
-              if (value.trim()) onFile(null);
-            }}
-            placeholder="https://res.cloudinary.com/… or any image link"
-          />
-        </label>
+        <div className="mt-3">
+          <label className="block">
+            <span className="mb-1.5 block text-[13px] font-medium text-ink">Image URL</span>
+            <Input
+              value={url}
+              onChange={(value) => {
+                onUrl(value);
+                if (value.trim()) onFile(null);
+              }}
+              placeholder="https://res.cloudinary.com/… or any image link"
+              spellCheck={false}
+            />
+          </label>
+          {url.trim() && <CopyLink value={url.trim()} />}
+          {file && !url.trim() && <p className="mt-1.5 text-[12.5px] text-muted">The uploaded link appears here after you save.</p>}
+        </div>
       )}
       {problem && <p className="mt-1.5 text-[13px] text-danger">{problem}</p>}
     </div>
@@ -665,11 +716,15 @@ function FounderCard({ founder, index, canRemove, onChange, onRemove }: { founde
             file={founder.file}
             url={founder.photoUrl}
             current={founder.removePhoto ? null : founder.photo}
-            onFile={(file) => onChange(file ? { file, photoUrl: "", removePhoto: false } : { file, removePhoto: false })}
+            onFile={(file) => onChange(file ? { file, photoUrl: "", removePhoto: false } : { file: null, removePhoto: false })}
             shape="round"
           />
-          {(founder.file || (founder.photo && !founder.removePhoto)) && (
-            <button type="button" onClick={() => onChange(founder.file ? { file: null } : { removePhoto: true })} className="mt-1 text-[12px] font-medium text-muted hover:text-danger">
+          {(founder.file || (founder.photo && !founder.removePhoto && founder.photoUrl.trim() === (founder.photo ?? ""))) && (
+            <button
+              type="button"
+              onClick={() => onChange(founder.file ? { file: null, photoUrl: founder.photo ?? "" } : { removePhoto: true, photoUrl: "" })}
+              className="mt-1 text-[12px] font-medium text-muted hover:text-danger"
+            >
               Remove
             </button>
           )}
@@ -683,12 +738,15 @@ function FounderCard({ founder, index, canRemove, onChange, onRemove }: { founde
               <Input value={founder.role} onChange={(role) => onChange({ role })} maxLength={80} placeholder="Founder & CEO" />
             </Field>
             <div className="sm:col-span-2">
-              <Field label="or photo URL">
+              <Field label="Photo URL">
                 <Input
                   value={founder.photoUrl}
                   onChange={(photoUrl) => onChange(photoUrl.trim() ? { photoUrl, file: null, removePhoto: false } : { photoUrl })}
                   placeholder="https://res.cloudinary.com/… or any image link"
+                  spellCheck={false}
                 />
+                {founder.photoUrl.trim() && <CopyLink value={founder.photoUrl.trim()} />}
+                {founder.file && !founder.photoUrl.trim() && <p className="mt-1.5 text-[12.5px] text-muted">The uploaded link appears here after you save.</p>}
               </Field>
             </div>
           </div>

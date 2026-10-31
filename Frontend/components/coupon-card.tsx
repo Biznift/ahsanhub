@@ -109,10 +109,13 @@ function CouponBoxes({
     }
   }
 
+  const offer = title?.trim() ?? "";
+  const instructions = opened?.note?.trim() ?? "";
+
   return (
     <div className="flex flex-col gap-3">
-      {title.trim() && (
-        <p className="rounded-xl border border-line bg-bg px-3 py-2.5 text-[15px] font-semibold leading-snug text-ink">{title}</p>
+      {offer && (
+        <p className="rounded-xl border border-line bg-bg px-3 py-2.5 text-[15px] font-semibold leading-snug text-ink">{offer}</p>
       )}
       <div className="flex items-center justify-between gap-3 rounded-xl border border-dashed border-brand-line bg-brand-soft px-3 py-2.5">
         <div className="min-w-0">
@@ -150,7 +153,7 @@ function CouponBoxes({
         <div className="rounded-xl border border-line bg-bg px-3 py-2.5">
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">How to use it</p>
           <p className="mt-1 whitespace-pre-line text-[14px] leading-relaxed text-ink-soft">
-            {opened.note.trim() || "No extra instructions for this code."}
+            {instructions || "No extra instructions for this code."}
           </p>
         </div>
       ) : (

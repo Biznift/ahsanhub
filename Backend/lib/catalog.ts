@@ -117,7 +117,7 @@ export const MODULES: KitModule[] = [
       { method: "PATCH", path: "/api/admin/coupon-codes/:id", summary: "Update the code, title, instructions, call to action, order, or visibility" },
       { method: "DELETE", path: "/api/admin/coupon-codes/:id", summary: "Remove a deal. The listing stays." },
       { method: "GET", path: "/api/public/coupon-codes", summary: "Live deals without the code or instructions. Query: limit" },
-      { method: "GET", path: "/api/account/coupon-codes", summary: "One code and its instructions, for a signed-in account. Query: id" },
+      { method: "GET", path: "/api/account/coupon-codes", summary: "Codes and instructions for a signed-in account. Query id returns one deal; without it, every live deal." },
       { method: "POST", path: "/api/auth/register", summary: "Create an account with name, email, phone, and password" },
     ],
     inNav: true,
