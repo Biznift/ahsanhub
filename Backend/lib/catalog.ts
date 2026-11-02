@@ -62,6 +62,7 @@ export const MODULES: KitModule[] = [
       { method: "GET", path: "/api/public/votes", summary: "Which listings this visitor upvoted. Query: ids" },
       { method: "GET", path: "/api/account/listings", summary: "The signed-in owner's listings" },
       { method: "PATCH", path: "/api/account/listings/:id", summary: "Owner edits content of their own listing" },
+      { method: "GET", path: "/api/account/founder-profile", summary: "The signed-in owner's personal founder details, reused across listings" },
     ],
     inNav: true,
   },

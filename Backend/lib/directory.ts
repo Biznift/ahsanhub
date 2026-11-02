@@ -6,7 +6,7 @@ import { LISTING_KINDS, type ListingKind } from "@/lib/kinds";
 import { cleanDescription, plainText } from "@/lib/sanitize";
 import { uniqueSlug } from "@/lib/slug";
 import { alert } from "@/lib/telegram";
-import { RULES, fileField, removeUpload, saveUpload } from "@/lib/upload";
+import { RULES, fileField, removeIfOrphan, saveUpload } from "@/lib/upload";
 
 export const SOCIAL_KEYS = ["x", "linkedin", "facebook", "instagram", "youtube", "github", "tiktok", "whatsapp"] as const;
 export type SocialKey = (typeof SOCIAL_KEYS)[number];
@@ -113,6 +113,7 @@ const founderSchema = z.object({
   socials: socialsSchema,
   removePhoto: z.boolean().optional(),
   photoUrl: z.string().trim().max(2000).optional(),
+  isSelf: z.boolean().optional(),
 });
 
 export const listingSchema = z
@@ -147,6 +148,9 @@ export const listingSchema = z
     const total = value.categoryIds.length + value.proposedCategories.length;
     if (total < 1) ctx.addIssue({ code: "custom", message: "Pick at least one category.", path: ["categoryIds"] });
     if (total > 5) ctx.addIssue({ code: "custom", message: "Pick up to 5 categories.", path: ["categoryIds"] });
+    if (value.founders.filter((founder) => founder.isSelf).length > 1) {
+      ctx.addIssue({ code: "custom", message: "Mark yourself as the founder on only one person.", path: ["founders"] });
+    }
     if (!value.hasCoupon) return;
     if (value.couponCode.length < 2) ctx.addIssue({ code: "custom", message: "Enter the coupon code.", path: ["couponCode"] });
     if (value.couponTitle.length < 2) {
@@ -280,14 +284,19 @@ export async function prepareListing(form: FormData, input: ListingInput, existi
       socials: normalizeSocials(input.socials),
       kind: input.kind,
     },
-    founders: input.founders.map((founder, index) => ({
-      name: founder.name,
-      role: founder.role,
-      bio: founder.bio,
-      photo: founderPhotos[index],
-      socials: normalizeSocials(founder.socials),
-      sortOrder: index,
-    })),
+    founders: input.founders.map((founder, index) => {
+      const previous = existing?.founders.find((item) => item.id === founder.id);
+      return {
+        name: founder.name,
+        role: founder.role,
+        bio: founder.bio,
+        photo: founderPhotos[index],
+        socials: normalizeSocials(founder.socials),
+        sortOrder: index,
+        isSelf: founder.isSelf,
+        userId: previous?.userId ?? null,
+      };
+    }),
     categoryIds,
     alternativeIds,
     coupon: input.hasCoupon ? { code: input.couponCode, title: input.couponTitle, note: input.couponNote } : null,
@@ -295,18 +304,24 @@ export async function prepareListing(form: FormData, input: ListingInput, existi
   };
 }
 
-export async function writeRelations(listingId: string, prepared: Awaited<ReturnType<typeof prepareListing>>) {
+export async function writeRelations(listingId: string, prepared: Awaited<ReturnType<typeof prepareListing>>, ownerId?: string | null) {
   await db.$transaction([
     db.founder.deleteMany({ where: { listingId } }),
     db.listingCategory.deleteMany({ where: { listingId } }),
     db.listingAlternative.deleteMany({ where: { listingId } }),
-    db.founder.createMany({ data: prepared.founders.map((founder) => ({ ...founder, listingId })) }),
+    db.founder.createMany({
+      data: prepared.founders.map((founder) => {
+        const { isSelf, ...row } = founder;
+        const userId = isSelf === true ? ownerId ?? row.userId : isSelf === false ? null : row.userId;
+        return { ...row, listingId, userId };
+      }),
+    }),
     db.listingCategory.createMany({ data: prepared.categoryIds.map((categoryId) => ({ listingId, categoryId })) }),
     ...(prepared.alternativeIds.length
       ? [db.listingAlternative.createMany({ data: prepared.alternativeIds.map((toolId) => ({ listingId, toolId })) })]
       : []),
   ]);
-  await Promise.all(prepared.stale.map((item) => removeUpload(item)));
+  await Promise.all(prepared.stale.map((item) => removeIfOrphan(item)));
 }
 
 export const cardInclude = {
@@ -376,6 +391,11 @@ export function toDetail(row: DetailRow, options?: { includeHidden?: boolean }) 
   };
 }
 
+/** The coupon edited with the listing. One admin-added deal is that coupon, so the form does not create another. */
+function listingCoupon<T extends { fromListing: boolean }>(deals: T[]) {
+  return deals.find((deal) => deal.fromListing) ?? (deals.length === 1 ? deals[0] : undefined);
+}
+
 /** Offer title only. The code and the instructions stay off the public listing until someone views the coupon. */
 function publicCoupon(deals: { id: string; title: string; active: boolean; fromListing: boolean }[]) {
   const live = deals.filter((deal) => deal.active);
@@ -385,17 +405,20 @@ function publicCoupon(deals: { id: string; title: string; active: boolean; fromL
 
 /** Same as the detail shape plus the private fields an owner or admin edits. */
 export function toEditable(row: DetailRow) {
+  const detail = toDetail(row);
+  const linked = new Map(row.founders.map((founder) => [founder.id, Boolean(founder.userId)]));
   return {
-    ...toDetail(row),
+    ...detail,
+    founders: detail.founders.map((founder) => ({ ...founder, isSelf: linked.get(founder.id) ?? false })),
     status: row.status,
     contactEmail: row.contactEmail,
     ownerId: row.ownerId,
     rejectNote: row.rejectNote,
     rejectImage: row.rejectImage,
     categoryIds: row.categories.filter((item) => item.category.status !== "rejected").map((item) => item.categoryId),
-    couponCode: row.couponDeals.find((deal) => deal.fromListing)?.code ?? "",
-    couponTitle: row.couponDeals.find((deal) => deal.fromListing)?.title ?? "",
-    couponNote: row.couponDeals.find((deal) => deal.fromListing)?.note ?? "",
+    couponCode: listingCoupon(row.couponDeals)?.code ?? "",
+    couponTitle: listingCoupon(row.couponDeals)?.title ?? "",
+    couponNote: listingCoupon(row.couponDeals)?.note ?? "",
     createdAt: row.createdAt.toISOString(),
   };
 }

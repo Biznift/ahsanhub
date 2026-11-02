@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { HttpError, limitClient, ok, rateLimit, route } from "@/lib/http";
 import { currentUser, hashPassword, passwordMatches, startSession } from "@/lib/auth";
 import { PRICING, cardInclude, parseListingForm, prepareListing, ratingsFor, revalidate, toCard, writeRelations } from "@/lib/directory";
+import { syncLinkedFounderProfile } from "@/lib/founder-profile";
 import { syncListingCoupon } from "@/lib/deals";
 import { LISTING_KINDS } from "@/lib/kinds";
 import { uniqueSlug } from "@/lib/slug";
@@ -116,7 +117,8 @@ export const POST = route(async (request) => {
   const listing = await db.listing.create({
     data: { ...prepared.columns, slug, contactEmail: owner.email, contactPhone: phone, ownerId, status: "pending" },
   });
-  await writeRelations(listing.id, prepared);
+  await writeRelations(listing.id, prepared, ownerId);
+  await syncLinkedFounderProfile(ownerId, prepared);
   await syncListingCoupon(listing.id, prepared.coupon);
 
   if (ownerId && !signedIn) {

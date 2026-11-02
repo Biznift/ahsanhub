@@ -3,8 +3,9 @@ import { db } from "@/lib/db";
 import { HttpError, ok, readJson, route } from "@/lib/http";
 import { requireAdmin } from "@/lib/auth";
 import { detailInclude, parseListingForm, prepareListing, revalidate, toEditable, writeRelations } from "@/lib/directory";
+import { syncLinkedFounderProfile } from "@/lib/founder-profile";
 import { syncListingCoupon } from "@/lib/deals";
-import { fileField, removeUpload, RULES, saveUpload } from "@/lib/upload";
+import { fileField, removeIfOrphan, removeUpload, RULES, saveUpload } from "@/lib/upload";
 import { recordActivity } from "@/lib/activity";
 import { alert } from "@/lib/telegram";
 import { notifyListingRejected } from "@/lib/listing-reject";
@@ -127,7 +128,8 @@ export const PUT = route<Context>(async (request, { params }) => {
     where: { id: existing.id },
     data: { ...prepared.columns, ...(contactEmail.success ? { contactEmail: contactEmail.data } : {}) },
   });
-  await writeRelations(existing.id, prepared);
+  await writeRelations(existing.id, prepared, existing.ownerId);
+  await syncLinkedFounderProfile(existing.ownerId, prepared);
   await syncListingCoupon(existing.id, prepared.coupon);
   revalidate("listings", `listing:${existing.slug}`, "coupon-codes");
   return ok(await presentWithStats(await load(existing.id)));
@@ -150,7 +152,7 @@ export const DELETE = route<Context>(async (_request, { params }) => {
   ]);
   await Promise.all(
     [existing.logo, existing.banner, existing.rejectImage, ...existing.founders.map((item) => item.photo)].map((item) =>
-      removeUpload(item).catch((error) => console.error("Listing file cleanup failed", error)),
+      removeIfOrphan(item).catch((error) => console.error("Listing file cleanup failed", error)),
     ),
   );
   revalidate("listings", `listing:${existing.slug}`, "categories", "coupon-codes");

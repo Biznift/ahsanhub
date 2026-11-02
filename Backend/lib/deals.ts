@@ -108,15 +108,24 @@ export function toAdminDeal(row: DealRow) {
   };
 }
 
+/** The coupon edited with the listing. A single admin-added deal counts, so a later save updates it instead of adding a second card. */
+function listingCoupon<T extends { fromListing: boolean }>(deals: T[]) {
+  return deals.find((deal) => deal.fromListing) ?? (deals.length === 1 ? deals[0] : undefined);
+}
+
 /** Creates, updates, or removes the coupon that was submitted with the listing. Other deals on the same product stay. */
 export async function syncListingCoupon(listingId: string, coupon: { code: string; title: string; note: string } | null) {
-  const existing = await db.couponDeal.findFirst({ where: { listingId, fromListing: true }, orderBy: { createdAt: "asc" } });
+  const deals = await db.couponDeal.findMany({ where: { listingId }, orderBy: { createdAt: "asc" } });
+  const existing = listingCoupon(deals);
   if (!coupon) {
     if (existing) await db.couponDeal.delete({ where: { id: existing.id } });
     return;
   }
   if (existing) {
-    await db.couponDeal.update({ where: { id: existing.id }, data: { code: coupon.code, title: coupon.title, note: coupon.note } });
+    await db.couponDeal.update({
+      where: { id: existing.id },
+      data: { code: coupon.code, title: coupon.title, note: coupon.note, fromListing: true },
+    });
     return;
   }
   const last = await db.couponDeal.aggregate({ _max: { sortOrder: true } });

@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { ok, route } from "@/lib/http";
 import { requireAdmin } from "@/lib/auth";
 import { cardInclude, detailInclude, parseListingForm, prepareListing, revalidate, toCard, toEditable, writeRelations } from "@/lib/directory";
+import { syncLinkedFounderProfile } from "@/lib/founder-profile";
 import { syncListingCoupon } from "@/lib/deals";
 import { uniqueSlug } from "@/lib/slug";
 import { recordActivity } from "@/lib/activity";
@@ -59,7 +60,8 @@ export const POST = route(async (request) => {
   const listing = await db.listing.create({
     data: { ...prepared.columns, slug, contactEmail, status: "published", publishedAt: new Date() },
   });
-  await writeRelations(listing.id, prepared);
+  await writeRelations(listing.id, prepared, listing.ownerId);
+  await syncLinkedFounderProfile(listing.ownerId, prepared);
   await syncListingCoupon(listing.id, prepared.coupon);
   await recordActivity("listing", `${input.name} was just published`);
   alert("listing.published", `${input.name} was added by an admin and is now live.`);

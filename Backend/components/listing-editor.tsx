@@ -35,14 +35,14 @@ export type EditableListing = {
   contactEmail: string;
   kind: ListingKind;
   categoryIds: string[];
-  founders: { id: string; name: string; role: string; bio: string; photo: string | null; socials: Record<string, string> }[];
+  founders: { id: string; name: string; role: string; bio: string; photo: string | null; socials: Record<string, string>; isSelf?: boolean }[];
   alternatives?: { id: string; name: string; slug: string }[];
   couponCode?: string;
   couponTitle?: string;
   couponNote?: string;
 };
 
-type FounderDraft = { id?: string; name: string; role: string; bio: string; photo: string | null; photoUrl: string; socials: Record<string, string>; file: File | null; removePhoto: boolean };
+type FounderDraft = { id?: string; name: string; role: string; bio: string; photo: string | null; photoUrl: string; socials: Record<string, string>; file: File | null; removePhoto: boolean; isSelf?: boolean };
 
 export function ListingEditor({ listing, onSave }: { listing: EditableListing; onSave: (form: FormData) => Promise<void> }) {
   const categories = useApi<{ items: { id: string; name: string; hidden: boolean; kind: ListingKind; status: "pending" | "approved" | "rejected" }[] }>("/api/admin/categories");
@@ -116,7 +116,7 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
         couponCode: couponOn ? couponCode.trim() : "",
         couponTitle: couponOn ? couponTitle.trim() : "",
         couponNote: couponOn ? couponNote.trim() : "",
-        founders: founders.map(({ id, name, role, bio, socials, removePhoto, photoUrl, photo, file }) => ({
+        founders: founders.map(({ id, name, role, bio, socials, removePhoto, photoUrl, photo, file, isSelf }) => ({
           id,
           name,
           role,
@@ -124,6 +124,7 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
           socials,
           removePhoto,
           photoUrl: file || removePhoto || photoUrl.trim() === (photo ?? "").trim() ? "" : photoUrl.trim(),
+          isSelf,
         })),
       }),
     );
@@ -352,6 +353,9 @@ export function ListingEditor({ listing, onSave }: { listing: EditableListing; o
         <div className="space-y-4">
           {founders.map((founder, index) => (
             <div key={founder.id ?? `new-${index}`} className="rounded-lg border border-[#eef0f4] p-4">
+              {founder.isSelf && (
+                <p className="mb-3 text-[13px] text-[#667085]">This person is the listing owner. Name, photo, bio, and social links update on every listing where they are the founder. The role stays on this product.</p>
+              )}
               <div className="grid gap-3 md:grid-cols-[96px_1fr_1fr_auto]">
                 <div>
                   <Preview src={founder.file ? URL.createObjectURL(founder.file) : founder.photoUrl.trim() ? founder.photoUrl.trim() : founder.removePhoto ? null : founder.photo} className="aspect-square w-20 rounded-full" />

@@ -80,8 +80,12 @@ model User {
   status        AccountStatus @default(active)
   plan          String        @default("")
   emailVerified Boolean       @default(true)
+  photo         String?
+  bio           String        @default("")
+  socials       Json          @default("{}")
   createdAt     DateTime      @default(now())
   listings      Listing[]
+  founderOf     Founder[]
   mails         Mail[]
   tokens        LoginToken[]
 }
@@ -183,12 +187,16 @@ model Founder {
   id        String  @id @default(cuid())
   listingId String
   listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
   name      String
   role      String  @default("")
   bio       String  @default("")
   photo     String?
   socials   Json    @default("{}")
   sortOrder Int     @default(0)
+
+  @@index([userId])
 }
 
 model Vote {

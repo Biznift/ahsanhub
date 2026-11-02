@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState, type ReactNode } from "react";
 import { CircleAlert, Check, ImagePlus, Lock, Plus, Trash2, X } from "lucide-react";
-import type { Account, AlternativeRef, Category, EditableListing, ListingKind, Pricing, SocialKey, Socials } from "@/lib/types";
+import type { Account, AlternativeRef, Category, EditableListing, FounderProfile, ListingKind, Pricing, SocialKey, Socials } from "@/lib/types";
 import { KIND_LABEL, LISTING_KINDS, PLATFORM_LABEL, PRICING_LABEL, categoryKind, cn } from "@/lib/format";
 import { CategoryPicker } from "@/components/category-picker";
 import { AlternativePicker } from "@/components/alternative-picker";
@@ -47,6 +47,8 @@ function emptyFounder(): FounderDraft {
 export function SubmitForm({ categories, existing }: { categories: Category[]; existing?: EditableListing }) {
   const editing = Boolean(existing);
   const [account, setAccount] = useState<Account | null>(null);
+  const [profile, setProfile] = useState<FounderProfile | null>(null);
+  const [iAmFounder, setIAmFounder] = useState(() => Boolean(existing?.founders.some((founder) => founder.isSelf)));
   const [draft, setDraft] = useState<Draft>(() => ({
     name: existing?.name ?? "",
     website: existing?.website ?? "",
@@ -87,15 +89,57 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    if (editing) return;
     fetch("/api/auth/me", { cache: "no-store" })
       .then((response) => (response.ok ? response.json() : { user: null }))
-      .then((body: { user: Account | null }) => setAccount(body.user))
+      .then(async (body: { user: Account | null }) => {
+        setAccount(body.user);
+        if (!body.user) return;
+        const profileResponse = await fetch("/api/account/founder-profile", { cache: "no-store" });
+        if (profileResponse.ok) setProfile(await profileResponse.json());
+      })
       .catch(() => undefined);
-  }, [editing]);
+  }, []);
+
+  useEffect(() => {
+    if (editing || !iAmFounder || !profile) return;
+    applySelfProfile();
+    // Fill once the saved profile arrives after the toggle is already on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile]);
 
   const set = (patch: Partial<Draft>) => setDraft((current) => ({ ...current, ...patch }));
   const setFounder = (key: string, patch: Partial<FounderDraft>) => setFounders((current) => current.map((item) => (item.key === key ? { ...item, ...patch } : item)));
+
+  function applySelfProfile() {
+    const name = profile?.name || account?.name || "";
+    setFounders((current) => {
+      const first = current[0] ?? emptyFounder();
+      return [
+        {
+          ...first,
+          name: name || first.name,
+          role: first.role.trim() ? first.role : profile?.role || "Founder",
+          bio: profile ? profile.bio : first.bio,
+          socials: profile ? profile.socials : first.socials,
+          photo: profile ? profile.photo : first.photo,
+          photoUrl: profile ? profile.photo ?? "" : first.photoUrl,
+          file: null,
+          removePhoto: false,
+        },
+        ...current.slice(1),
+      ];
+    });
+  }
+
+  function setSelfFounder(on: boolean) {
+    setIAmFounder(on);
+    if (on) {
+      applySelfProfile();
+      return;
+    }
+    if (editing) return;
+    setFounders((current) => [emptyFounder(), ...current.slice(1)]);
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -122,7 +166,7 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
         couponNote: couponOn ? couponNote.trim() : "",
         founders: founders
           .filter((founder) => founder.name.trim())
-          .map(({ id, name, role, bio, socials, removePhoto, photoUrl, file }) => ({
+          .map(({ id, name, role, bio, socials, removePhoto, photoUrl, file }, index) => ({
             id,
             name,
             role,
@@ -130,6 +174,7 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
             socials,
             removePhoto,
             photoUrl: file || removePhoto ? "" : photoUrl,
+            isSelf: iAmFounder && index === 0,
           })),
       }),
     );
@@ -334,13 +379,35 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
         </Section>
 
         <Section id="founders" index={5} title="Founders" description="People trust products with real people behind them. Add up to five.">
+          {(signedIn || editing) && (
+            <button
+              type="button"
+              role="switch"
+              aria-checked={iAmFounder}
+              onClick={() => setSelfFounder(!iAmFounder)}
+              className={cn("flex w-full items-center justify-between gap-4 rounded-xl border px-4 py-3 text-left transition", iAmFounder ? "border-brand bg-brand-soft" : "border-line hover:border-line-strong")}
+            >
+              <span>
+                <span className="block text-[15px] font-medium text-ink">I am the founder</span>
+                <span className="mt-0.5 block text-[13px] text-muted">
+                  {iAmFounder
+                    ? "Your name, photo, bio, and social links are saved to your profile. Changing them updates every listing where you are the founder. The role on this product can be different."
+                    : "Turn this on if you are the founder. We fill in your profile so you do not enter LinkedIn, Facebook, and the rest again."}
+                </span>
+              </span>
+              <span className={cn("relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition", iAmFounder ? "bg-brand" : "bg-line-strong")} aria-hidden="true">
+                <span className={cn("inline-block h-5 w-5 rounded-full bg-white transition", iAmFounder ? "translate-x-[22px]" : "translate-x-0.5")} />
+              </span>
+            </button>
+          )}
           <div className="space-y-4">
             {founders.map((founder, index) => (
               <FounderCard
                 key={founder.key}
                 founder={founder}
                 index={index}
-                canRemove={founders.length > 1 || Boolean(founder.name)}
+                self={iAmFounder && index === 0}
+                canRemove={!(iAmFounder && index === 0) && (founders.length > 1 || Boolean(founder.name))}
                 onChange={(patch) => setFounder(founder.key, patch)}
                 onRemove={() => setFounders((current) => (current.length > 1 ? current.filter((item) => item.key !== founder.key) : [emptyFounder()]))}
               />
@@ -695,12 +762,27 @@ function SocialInputs({ value, onChange, compact = false }: { value: Socials; on
   );
 }
 
-function FounderCard({ founder, index, canRemove, onChange, onRemove }: { founder: FounderDraft; index: number; canRemove: boolean; onChange: (patch: Partial<FounderDraft>) => void; onRemove: () => void }) {
-  const [showLinks, setShowLinks] = useState(Object.keys(founder.socials).length > 0);
+function FounderCard({
+  founder,
+  index,
+  self,
+  canRemove,
+  onChange,
+  onRemove,
+}: {
+  founder: FounderDraft;
+  index: number;
+  self?: boolean;
+  canRemove: boolean;
+  onChange: (patch: Partial<FounderDraft>) => void;
+  onRemove: () => void;
+}) {
+  const [linksOpen, setLinksOpen] = useState(false);
+  const showLinks = linksOpen || Object.keys(founder.socials).length > 0;
   return (
     <div className="rounded-xl border border-line p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
-        <p className="text-[13px] font-semibold uppercase tracking-[0.08em] text-muted">Founder {index + 1}</p>
+        <p className="text-[13px] font-semibold uppercase tracking-[0.08em] text-muted">{self ? "You" : `Founder ${index + 1}`}</p>
         {canRemove && (
           <button type="button" onClick={onRemove} aria-label={`Remove founder ${index + 1}`} className="grid h-8 w-8 place-items-center rounded-lg text-muted hover:bg-danger-soft hover:text-danger">
             <Trash2 size={15} />
@@ -734,7 +816,7 @@ function FounderCard({ founder, index, canRemove, onChange, onRemove }: { founde
             <Field label="Name">
               <Input value={founder.name} onChange={(name) => onChange({ name })} maxLength={80} placeholder="Aisha Rahman" />
             </Field>
-            <Field label="Role">
+            <Field label="Role" hint={self ? "Only for this product. For example Founder on one listing and Owner on another." : undefined}>
               <Input value={founder.role} onChange={(role) => onChange({ role })} maxLength={80} placeholder="Founder & CEO" />
             </Field>
             <div className="sm:col-span-2">
@@ -763,7 +845,7 @@ function FounderCard({ founder, index, canRemove, onChange, onRemove }: { founde
           {showLinks ? (
             <SocialInputs value={founder.socials} onChange={(socials) => onChange({ socials })} compact />
           ) : (
-            <button type="button" onClick={() => setShowLinks(true)} className="inline-flex items-center gap-1.5 text-[14px] font-medium text-brand-text">
+            <button type="button" onClick={() => setLinksOpen(true)} className="inline-flex items-center gap-1.5 text-[14px] font-medium text-brand-text">
               <Plus size={15} /> Add founder social links
             </button>
           )}

@@ -29,7 +29,9 @@ export type ListingCard = {
   rating?: Rating;
 };
 
-export type Founder = { id: string; name: string; role: string; bio: string; photo: string | null; socials: Socials };
+export type Founder = { id: string; name: string; role: string; bio: string; photo: string | null; socials: Socials; isSelf?: boolean };
+
+export type FounderProfile = { name: string; photo: string | null; bio: string; socials: Socials; role: string };
 
 export type ListingDetail = ListingCard & {
   description: string;

@@ -217,6 +217,23 @@ export async function saveUpload(file: File, rule: UploadRule, folder: string): 
   return { path: publicPath, kind: found.kind, width, height };
 }
 
+/** True when a stored path is still on a user, founder, or listing. */
+export async function uploadStillUsed(publicPath: string) {
+  const [users, founders, listings] = await Promise.all([
+    db.user.count({ where: { photo: publicPath } }),
+    db.founder.count({ where: { photo: publicPath } }),
+    db.listing.count({ where: { OR: [{ logo: publicPath }, { banner: publicPath }, { rejectImage: publicPath }] } }),
+  ]);
+  return users + founders + listings > 0;
+}
+
+/** Same as `removeUpload`, but keeps a file that another row still points at. */
+export async function removeIfOrphan(publicPath: string | null | undefined) {
+  if (!publicPath) return;
+  if (await uploadStillUsed(publicPath)) return;
+  await removeUpload(publicPath);
+}
+
 /** Removes a stored file and its library row. Unknown paths are ignored. */
 export async function removeUpload(publicPath: string | null | undefined) {
   if (!publicPath) return;

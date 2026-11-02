@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { HttpError, ok, route } from "@/lib/http";
 import { requireUser } from "@/lib/auth";
 import { detailInclude, parseListingForm, prepareListing, revalidate, toEditable, writeRelations } from "@/lib/directory";
+import { syncLinkedFounderProfile } from "@/lib/founder-profile";
 import { syncListingCoupon } from "@/lib/deals";
 import { removeUpload } from "@/lib/upload";
 
@@ -37,7 +38,8 @@ export const PATCH = route<Context>(async (request, { params }) => {
   if (resubmitted && existing.rejectImage) {
     await removeUpload(existing.rejectImage).catch((error) => console.error("Rejection image cleanup failed", error));
   }
-  await writeRelations(existing.id, prepared);
+  await writeRelations(existing.id, prepared, existing.ownerId);
+  await syncLinkedFounderProfile(existing.ownerId, prepared);
   await syncListingCoupon(existing.id, prepared.coupon);
   revalidate("listings", `listing:${existing.slug}`, "ads", "coupon-codes");
   const row = await db.listing.findUniqueOrThrow({ where: { id: existing.id }, include: detailInclude });
