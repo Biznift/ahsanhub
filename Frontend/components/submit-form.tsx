@@ -87,6 +87,9 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<{ slug: string; hasAccount: boolean; createdAccount: boolean } | null>(null);
   const [saved, setSaved] = useState(false);
+  const [agreeHalal, setAgreeHalal] = useState(false);
+  const [agreeContent, setAgreeContent] = useState(false);
+  const complianceOk = agreeHalal && agreeContent;
 
   useEffect(() => {
     fetch("/api/auth/me", { cache: "no-store" })
@@ -144,6 +147,7 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError(null);
+    if (!complianceOk) return fail("Confirm both Shariah compliance statements before submitting.", "compliance");
     if (!editing && !logo && !logoUrl.trim()) return fail("Upload a logo or paste an image URL.", "media");
     if (draft.categoryIds.length + draft.proposedCategories.length === 0) return fail("Pick at least one category.", "company");
     if (textLength < 80) return fail("The description needs at least 80 characters.", "description");
@@ -504,6 +508,23 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
           </Section>
         )}
 
+        <section id="compliance" className="scroll-mt-24 space-y-3 rounded-2xl border border-line bg-surface p-5 sm:p-7">
+          <div>
+            <h2 className="text-[18px] font-semibold tracking-[-0.01em] text-ink">Shariah compliance</h2>
+            <p className="mt-1 text-[14px] leading-relaxed text-muted">Both statements must be confirmed before you can submit.</p>
+          </div>
+          <ComplianceCheck
+            checked={agreeHalal}
+            onChange={setAgreeHalal}
+            label="We operate our business in a halal and Shariah-compliant manner."
+          />
+          <ComplianceCheck
+            checked={agreeContent}
+            onChange={setAgreeContent}
+            label="We do not use female models, female images, music, inappropriate visuals, or other haram elements in our products, marketing, or creative content."
+          />
+        </section>
+
         {error && (
           <p className="flex items-start gap-2 rounded-xl border border-danger/30 bg-danger-soft px-4 py-3 text-[14px] text-danger" role="alert">
             <CircleAlert size={17} className="mt-0.5 shrink-0" />
@@ -513,23 +534,27 @@ export function SubmitForm({ categories, existing }: { categories: Category[]; e
 
         <div className="sticky bottom-0 z-20 -mx-5 flex flex-wrap items-center justify-between gap-3 border-t border-line bg-glass px-5 py-4 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border">
           <p className="text-[13px] text-muted">
-            {editing
-              ? saved
-                ? existing?.status === "published"
-                  ? "Saved. It is hidden again until an admin approves the changes."
-                  : existing?.status === "rejected"
-                    ? "Saved. It is back in review."
-                    : "Saved. It stays in review until an admin publishes it."
-                : existing?.status === "published"
-                  ? "Saving sends this live listing back to review."
-                  : existing?.status === "rejected"
-                    ? "Saving sends this back for review."
-                    : "Changes stay in review until an admin publishes the listing."
-              : "Every listing is reviewed by a person before it is published."}
+            {!complianceOk
+              ? "Confirm both Shariah compliance statements above to continue."
+              : editing
+                ? saved
+                  ? existing?.status === "published"
+                    ? "Saved. It is hidden again until an admin approves the changes."
+                    : existing?.status === "rejected"
+                      ? "Saved. It is back in review."
+                      : "Saved. It stays in review until an admin publishes it."
+                  : existing?.status === "published"
+                    ? "Saving sends this live listing back to review."
+                    : existing?.status === "rejected"
+                      ? "Saving sends this back for review."
+                      : "Changes stay in review until an admin publishes the listing."
+                : "Every listing is reviewed by a person before it is published."}
           </p>
-          <button type="submit" disabled={busy} className="h-11 rounded-xl bg-brand px-6 text-[15px] font-semibold text-white transition hover:bg-brand-hover disabled:opacity-60">
-            {busy ? (editing ? "Saving…" : "Submitting…") : editing ? "Save changes" : "Submit for review"}
-          </button>
+          {complianceOk && (
+            <button type="submit" disabled={busy} className="h-11 rounded-xl bg-brand px-6 text-[15px] font-semibold text-white transition hover:bg-brand-hover disabled:opacity-60">
+              {busy ? (editing ? "Saving…" : "Submitting…") : editing ? "Save changes" : "Submit for review"}
+            </button>
+          )}
         </div>
       </div>
     </form>
@@ -586,6 +611,21 @@ function Field({ label, required, hint, children }: { label: string; required?: 
       {children}
       {hint && <p className="mt-1.5 text-[13px] text-muted">{hint}</p>}
     </div>
+  );
+}
+
+function ComplianceCheck({ checked, onChange, label }: { checked: boolean; onChange: (value: boolean) => void; label: string }) {
+  return (
+    <label className={cn("flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3.5 transition", checked ? "border-brand bg-brand-soft" : "border-line hover:border-line-strong")}>
+      <span
+        className={cn("mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md border transition", checked ? "border-brand bg-brand text-white" : "border-line-strong bg-bg")}
+        aria-hidden="true"
+      >
+        {checked && <Check size={13} strokeWidth={3} />}
+      </span>
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="sr-only" />
+      <span className="text-[14px] leading-relaxed text-ink">{label}</span>
+    </label>
   );
 }
 
